@@ -28,3 +28,8 @@ server/database.db
 *.njsproj
 *.sln
 *.sw?
+
+# Build and local binary files
+build-tools/
+app-debug.apk
+
