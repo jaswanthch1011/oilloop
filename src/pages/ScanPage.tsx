@@ -11,7 +11,7 @@ import {
   type ClassificationResult,
 } from '../lib/oilClassifier';
 
-type ScanState = 'idle' | 'camera' | 'scanning' | 'result' | 'error' | 'manual' | 'upload';
+type ScanState = 'idle' | 'camera' | 'scanning' | 'result' | 'error' | 'manual' | 'upload' | 'details_form';
 
 interface DetectionResult {
   brand: string;
@@ -40,6 +40,13 @@ export default function ScanPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStage, setScanStage] = useState('');
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+
+  // Machine Learning temporary detection states (for user details form confirmation)
+  const [mlDetectionsList, setMlDetectionsList] = useState<string[]>([]);
+  const [mlColorAnalysis, setMlColorAnalysis] = useState<any>(null);
+  const [mlDebugDetails, setMlDebugDetails] = useState<string[]>([]);
+  const [mlConfidence, setMlConfidence] = useState(100);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const uploadCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -63,40 +70,77 @@ export default function ScanPage() {
     setModelLoading(false);
   }, [modelLoading]);
 
-  const startCamera = async () => {
+  const startCamera = () => {
     setCameraError('');
     setErrorDetails([]);
     setErrorDetections([]);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setState('camera');
-    } catch (err) {
-      console.error('Camera error:', err);
-      setCameraError('Camera access denied. Use image upload or manual entry instead.');
-      setState('idle');
-    }
+    setState('camera');
   };
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadAllModels();
     return () => {
       stopCamera();
     };
-  }, [loadAllModels]);
+  }, [loadAllModels, stopCamera]);
+
+  // Handle camera stream lifecycle based on state
+  useEffect(() => {
+    let activeStream: MediaStream | null = null;
+    
+    const enableCamera = async () => {
+      if (state !== 'camera') return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
+        });
+        
+        // Clean up old stream if it exists
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(t => t.stop());
+        }
+        
+        streamRef.current = stream;
+        activeStream = stream;
+        
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          try {
+            await videoRef.current.play();
+          } catch (playErr) {
+            console.warn('Error playing video stream:', playErr);
+          }
+        }
+      } catch (err) {
+        console.error('Camera error:', err);
+        setCameraError('Camera access denied or unavailable. Use image upload or manual entry instead.');
+        setState('idle');
+      }
+    };
+
+    if (state === 'camera') {
+      // Give React a tiny tick to ensure the video DOM element is fully mounted
+      const timer = setTimeout(() => {
+        enableCamera();
+      }, 50);
+      return () => clearTimeout(timer);
+    } else {
+      stopCamera();
+    }
+
+    return () => {
+      if (activeStream) {
+        activeStream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [state, stopCamera]);
 
   // Simulated progress animation during scan
   const animateProgress = useCallback(() => {
@@ -131,41 +175,65 @@ export default function ScanPage() {
       return;
     }
 
-    // SUCCESS — oil identified
+    // SUCCESS — oil container verified by ML!
+    // Pre-populate form inputs with AI's detections
+    setManualBrand(result.brand);
+    setManualType(result.oilType);
+    setManualVolume(result.volume);
+    
+    // Save ML analysis details for final submission
+    setMlDetectionsList(result.mlDetections || []);
+    setMlColorAnalysis(result.colorAnalysis || null);
+    setMlDebugDetails(result.classificationDetails || []);
+    setMlConfidence(result.confidence || 100);
+
+    setState('details_form');
+  };
+
+  const handleDetailsFormSubmit = () => {
+    if (!manualBrand || !manualType) {
+      setCameraError('Please select both brand and oil type.');
+      return;
+    }
+
+    const brand = OIL_BRANDS.find(b => b.name === manualBrand) || OIL_BRANDS[0];
+    const points = calculatePoints(manualVolume, brand.pointsMultiplier);
+
     const detection: DetectionResult = {
-      brand: result.brand,
-      oilType: result.oilType,
-      volume: result.volume,
-      confidence: result.confidence,
-      pointsAwarded: result.pointsAwarded,
-      mlDetections: result.mlDetections,
-      colorAnalysis: result.colorAnalysis,
-      classificationDetails: result.classificationDetails,
+      brand: manualBrand,
+      oilType: manualType,
+      volume: manualVolume,
+      confidence: mlConfidence,
+      pointsAwarded: points,
+      mlDetections: mlDetectionsList.length > 0 ? mlDetectionsList : ['AI Validated Container'],
+      colorAnalysis: mlColorAnalysis,
+      classificationDetails: mlDebugDetails,
     };
+
+    // Award points and save result
+    addPoints(points);
+    addLiters(manualVolume);
+    addScanResult({
+      brand: detection.brand,
+      oilType: detection.oilType,
+      volume: detection.volume,
+      confidence: mlConfidence,
+      pointsAwarded: points,
+    });
+    addNotification({
+      type: 'reward_alert',
+      title: `+${points} Points! 🎉`,
+      message: `Earned from scanning ${detection.brand} ${detection.oilType} (${detection.volume}L)`,
+      read: false,
+      icon: '⭐',
+    });
 
     setResult(detection);
     setState('result');
     setShowConfetti(true);
     setTimeout(() => setShowConfetti(false), 2000);
-
-    // Award points
-    addPoints(result.pointsAwarded);
-    addLiters(result.volume);
-    addScanResult({
-      brand: result.brand,
-      oilType: result.oilType,
-      volume: result.volume,
-      confidence: result.confidence,
-      pointsAwarded: result.pointsAwarded,
-    });
-    addNotification({
-      type: 'reward_alert',
-      title: `+${result.pointsAwarded} Points! 🎉`,
-      message: `Earned from scanning ${result.brand} ${result.oilType} (${result.volume}L)`,
-      read: false,
-      icon: '⭐',
-    });
   };
+
 
   const captureAndAnalyze = async () => {
     setState('scanning');
@@ -609,6 +677,104 @@ export default function ScanPage() {
             <button onClick={() => setState('manual')} className="btn-ghost w-full flex items-center justify-center gap-2">
               <Edit3 size={18} /> Enter Manually Instead
             </button>
+          </div>
+        )}
+
+        {/* ═══════ DETAILS FORM STATE ═══════ */}
+        {state === 'details_form' && (
+          <div className="animate-slide-up">
+            <div className="flex items-center gap-3 p-4 rounded-2xl mb-6 shadow-sm" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(34,197,94,0.15)' }}>
+                <CheckCircle2 size={20} style={{ color: 'var(--brand-primary)' }} />
+              </div>
+              <div>
+                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Oil Container Validated by AI!</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Confirm or update the scanned details below to earn points.</p>
+              </div>
+            </div>
+
+            <div className="card-base p-5 mb-5 space-y-4 shadow-sm">
+              <h3 className="text-sm font-bold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>Scan Details</h3>
+              
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>Brand</label>
+                <select value={manualBrand} onChange={e => setManualBrand(e.target.value)} className="input-base">
+                  <option value="">Select brand</option>
+                  {OIL_BRANDS.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>Oil Type</label>
+                <select value={manualType} onChange={e => setManualType(e.target.value)} className="input-base">
+                  <option value="">Select type</option>
+                  {OIL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>Quantity (Liters)</label>
+                  <span className="text-sm font-bold text-green-500">{manualVolume.toFixed(1)} L</span>
+                </div>
+                <input
+                  type="range" min={0.5} max={15} step={0.5}
+                  value={manualVolume}
+                  onChange={e => setManualVolume(Number(e.target.value))}
+                  className="w-full accent-green-500"
+                />
+                <div className="flex justify-between text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  <span>0.5L</span><span>15L</span>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Insights & Confidence */}
+            <div className="card-base p-4 mb-6 shadow-sm" style={{ background: 'var(--bg-secondary)' }}>
+              <p className="text-[10px] font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>AI Insights</p>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span style={{ color: 'var(--text-muted)' }}>ML Classifier Verification</span>
+                  <span className="font-bold text-green-500">Passed (Cooking Oil Container)</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span style={{ color: 'var(--text-muted)' }}>AI Detection Confidence</span>
+                  <span className="font-bold" style={{ color: 'var(--brand-primary)' }}>{mlConfidence}%</span>
+                </div>
+                {mlColorAnalysis && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span style={{ color: 'var(--text-muted)' }}>Detected Oil Color Profile</span>
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="w-3 h-3 rounded-full border"
+                        style={{
+                          background: `hsl(${mlColorAnalysis.hue}, ${mlColorAnalysis.saturation}%, ${mlColorAnalysis.lightness}%)`,
+                          borderColor: 'var(--border-color)',
+                        }}
+                      />
+                      <span className="capitalize">{mlColorAnalysis.dominantColor}</span>
+                    </div>
+                  </div>
+                )}
+                {mlDetectionsList.length > 0 && (
+                  <div className="pt-1">
+                    <span className="text-[10px] block mb-1" style={{ color: 'var(--text-muted)' }}>Object Identifiers:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {mlDetectionsList.slice(0, 3).map((det, idx) => (
+                        <span key={idx} className="px-1.5 py-0.5 rounded text-[9px]" style={{ background: 'var(--border-color)', color: 'var(--text-muted)' }}>
+                          {det}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button onClick={handleDetailsFormSubmit} className="btn-primary w-full flex items-center justify-center gap-2 mb-3">
+              <CheckCircle2 size={18} /> Confirm & Claim Points
+            </button>
+            <button onClick={reset} className="btn-ghost w-full text-center">Scan Again</button>
           </div>
         )}
 
