@@ -14,6 +14,7 @@
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import * as mobilenet from '@tensorflow-models/mobilenet';
+import { calculatePoints } from './calculations';
 
 // ── Oil Visual Signatures ──
 
@@ -37,52 +38,52 @@ export const OIL_SIGNATURES: OilSignature[] = [
   // ── Fortune ──
   { brandName: 'Fortune', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
     colorProfile: { hueMin: 35, hueMax: 55, satMin: 60, satMax: 100, lightMin: 45, lightMax: 70 }, weight: 10 },
-  { brandName: 'Fortune', oilType: 'Mustard Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
+  { brandName: 'Fortune', oilType: 'Canola-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
     colorProfile: { hueMin: 20, hueMax: 40, satMin: 70, satMax: 100, lightMin: 30, lightMax: 55 }, weight: 8 },
   { brandName: 'Fortune', oilType: 'Soybean Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
     colorProfile: { hueMin: 40, hueMax: 60, satMin: 40, satMax: 80, lightMin: 50, lightMax: 75 }, weight: 7 },
-  { brandName: 'Fortune', oilType: 'Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
+  { brandName: 'Fortune', oilType: 'Refined Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
     colorProfile: { hueMin: 35, hueMax: 50, satMin: 30, satMax: 70, lightMin: 55, lightMax: 80 }, weight: 6 },
   // ── Saffola ──
   { brandName: 'Saffola', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.3,
     colorProfile: { hueMin: 38, hueMax: 55, satMin: 55, satMax: 100, lightMin: 50, lightMax: 72 }, weight: 10 },
-  { brandName: 'Saffola', oilType: 'Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.3,
+  { brandName: 'Saffola', oilType: 'Refined Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.3,
     colorProfile: { hueMin: 35, hueMax: 50, satMin: 30, satMax: 65, lightMin: 55, lightMax: 78 }, weight: 6 },
-  { brandName: 'Saffola', oilType: 'Olive Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.3,
+  { brandName: 'Saffola', oilType: 'Canola Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.3,
     colorProfile: { hueMin: 55, hueMax: 90, satMin: 40, satMax: 85, lightMin: 35, lightMax: 60 }, weight: 9 },
   // ── Dhara ──
-  { brandName: 'Dhara', oilType: 'Mustard Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
+  { brandName: 'Dhara', oilType: 'Canola-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 18, hueMax: 38, satMin: 70, satMax: 100, lightMin: 30, lightMax: 52 }, weight: 9 },
   { brandName: 'Dhara', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 38, hueMax: 55, satMin: 55, satMax: 95, lightMin: 48, lightMax: 70 }, weight: 8 },
-  { brandName: 'Dhara', oilType: 'Groundnut Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
+  { brandName: 'Dhara', oilType: 'Soy-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 25, hueMax: 45, satMin: 50, satMax: 90, lightMin: 40, lightMax: 65 }, weight: 7 },
   // ── Sundrop ──
   { brandName: 'Sundrop', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.15,
     colorProfile: { hueMin: 38, hueMax: 55, satMin: 60, satMax: 100, lightMin: 48, lightMax: 72 }, weight: 9 },
-  { brandName: 'Sundrop', oilType: 'Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.15,
+  { brandName: 'Sundrop', oilType: 'Refined Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.15,
     colorProfile: { hueMin: 35, hueMax: 50, satMin: 30, satMax: 65, lightMin: 55, lightMax: 78 }, weight: 5 },
   // ── Nature Fresh ──
-  { brandName: 'Nature Fresh', oilType: 'Mustard Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
+  { brandName: 'Nature Fresh', oilType: 'Canola-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
     colorProfile: { hueMin: 18, hueMax: 40, satMin: 65, satMax: 100, lightMin: 28, lightMax: 55 }, weight: 7 },
   { brandName: 'Nature Fresh', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
     colorProfile: { hueMin: 38, hueMax: 55, satMin: 55, satMax: 95, lightMin: 48, lightMax: 70 }, weight: 6 },
   { brandName: 'Nature Fresh', oilType: 'Soybean Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
     colorProfile: { hueMin: 40, hueMax: 58, satMin: 40, satMax: 80, lightMin: 50, lightMax: 72 }, weight: 5 },
   // ── Patanjali ──
-  { brandName: 'Patanjali', oilType: 'Mustard Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
+  { brandName: 'Patanjali', oilType: 'Canola-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 18, hueMax: 40, satMin: 70, satMax: 100, lightMin: 28, lightMax: 52 }, weight: 8 },
   { brandName: 'Patanjali', oilType: 'Coconut Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 0, hueMax: 30, satMin: 0, satMax: 20, lightMin: 80, lightMax: 100 }, weight: 9 },
-  { brandName: 'Patanjali', oilType: 'Groundnut Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
+  { brandName: 'Patanjali', oilType: 'Soy-dominant Generic Vegetable Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
     colorProfile: { hueMin: 25, hueMax: 45, satMin: 50, satMax: 85, lightMin: 40, lightMax: 65 }, weight: 6 },
   // ── KS Oils ──
-  { brandName: 'KS Oils', oilType: 'Mustard Oil', volumes: [1, 2, 5, 15], pointsMultiplier: 1.0,
+  { brandName: 'KS Oils', oilType: 'Canola-dominant Generic Vegetable Oil', volumes: [1, 2, 5, 15], pointsMultiplier: 1.0,
     colorProfile: { hueMin: 18, hueMax: 40, satMin: 65, satMax: 100, lightMin: 28, lightMax: 52 }, weight: 6 },
   { brandName: 'KS Oils', oilType: 'Sunflower Oil', volumes: [1, 2, 5, 15], pointsMultiplier: 1.0,
     colorProfile: { hueMin: 38, hueMax: 55, satMin: 55, satMax: 95, lightMin: 48, lightMax: 70 }, weight: 5 },
   // ── Figaro ──
-  { brandName: 'Figaro', oilType: 'Olive Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.5,
+  { brandName: 'Figaro', oilType: 'Canola Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.5,
     colorProfile: { hueMin: 55, hueMax: 95, satMin: 40, satMax: 85, lightMin: 30, lightMax: 60 }, weight: 10 },
 ];
 
@@ -555,7 +556,7 @@ export async function classifyOilImage(
     details.push(`Container size ratio: ${(sizeRatio * 100).toFixed(1)}% → ${volume}L`);
   }
 
-  const points = Math.round(50 * volume * sig.pointsMultiplier);
+  const points = calculatePoints(volume, sig.oilType, sig.pointsMultiplier);
 
   details.push(`Best match: ${sig.brandName} ${sig.oilType} (score: ${bestMatch.score.toFixed(1)})`);
   details.push(`Top 3 matches:`);

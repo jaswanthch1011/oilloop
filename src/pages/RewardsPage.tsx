@@ -47,7 +47,7 @@ export default function RewardsPage() {
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
       <TopBar title="Rewards" />
-      <div className="page-container">
+      <div className="page-container" style={{ paddingTop: '4rem' }}>
         {/* Points Balance */}
         <div className="card-base p-5 mb-6 text-center animate-slide-down" style={{ background: 'linear-gradient(135deg, var(--bg-card), var(--glow-color))' }}>
           <div className="flex items-center justify-center gap-2 mb-1">

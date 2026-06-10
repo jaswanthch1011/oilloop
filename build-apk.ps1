@@ -6,8 +6,8 @@ $ErrorActionPreference = "Stop"
 # 1. Setup paths
 $Workspace = "C:\Users\Jaswanth Ch\.gemini\antigravity-ide\scratch\oilloop"
 $ToolsDir = "$Workspace\build-tools"
-$JdkZip = "$ToolsDir\jdk21.zip"
-$JdkDir = "$ToolsDir\jdk-21"
+$JdkZip = "$ToolsDir\jdk17.zip"
+$JdkDir = "$ToolsDir\jdk-17"
 $SdkZip = "$ToolsDir\cmdline-tools.zip"
 $AndroidSdkDir = "$ToolsDir\android-sdk"
 $CmdLineToolsDir = "$AndroidSdkDir\cmdline-tools"
@@ -17,26 +17,26 @@ if (!(Test-Path $ToolsDir)) {
     Write-Host "Created build-tools directory."
 }
 
-# 2. Download and extract JDK 21 if not exists
+# 2. Download and extract JDK 17 if not exists
 if (!(Test-Path "$JdkDir\bin\java.exe")) {
-    Write-Host "Downloading OpenJDK 21..."
-    $JdkUrl = "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse"
+    Write-Host "Downloading OpenJDK 17..."
+    $JdkUrl = "https://api.adoptium.net/v3/binary/latest/17/ga/windows/x64/jdk/hotspot/normal/eclipse"
     Invoke-WebRequest -Uri $JdkUrl -OutFile $JdkZip -UseBasicParsing
     
-    Write-Host "Extracting OpenJDK 21..."
+    Write-Host "Extracting OpenJDK 17..."
     Expand-Archive -Path $JdkZip -DestinationPath $ToolsDir -Force
     
-    # Rename extracted folder (like jdk-21.x.x+x) to jdk-21
-    $ExtractedFolder = Get-ChildItem $ToolsDir -Directory | Where-Object { $_.Name -like "jdk-21*" } | Select-Object -First 1
+    # Rename extracted folder (like jdk-17.x.x+x) to jdk-17
+    $ExtractedFolder = Get-ChildItem $ToolsDir -Directory | Where-Object { $_.Name -like "jdk-17*" } | Select-Object -First 1
     if ($ExtractedFolder) {
-        Rename-Item -Path $ExtractedFolder.FullName -NewName "jdk-21"
-        Write-Host "JDK 21 setup complete."
+        Rename-Item -Path $ExtractedFolder.FullName -NewName "jdk-17"
+        Write-Host "JDK 17 setup complete."
     } else {
-        throw "Failed to locate extracted JDK 21 folder."
+        throw "Failed to locate extracted JDK 17 folder."
     }
     Remove-Item -Path $JdkZip -Force
 } else {
-    Write-Host "JDK 21 is already installed."
+    Write-Host "JDK 17 is already installed."
 }
 
 # 3. Download and extract Android Command Line Tools if not exists
@@ -99,7 +99,21 @@ sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "platfor
 Write-Host "Building web assets and syncing with Capacitor..."
 Set-Location -Path $Workspace
 npm.cmd run build
-npx.cmd cap sync android
+    # Also patch Capacitor module's build.gradle to use Java 17
+    $CapacitorModuleGradle = "$Workspace\node_modules\@capacitor\android\capacitor\build.gradle"
+    if (Test-Path $CapacitorModuleGradle) {
+        (Get-Content $CapacitorModuleGradle) -replace 'VERSION_21', 'VERSION_17' | Set-Content $CapacitorModuleGradle
+        Write-Host "Patched Capacitor module's build.gradle to use Java 17."
+    } else {
+        Write-Host "Warning: Capacitor module build.gradle not found at $CapacitorModuleGradle"
+    }
+    $CapacitorGradle = "$Workspace\android\app\capacitor.build.gradle"
+    if (Test-Path $CapacitorGradle) {
+        (Get-Content $CapacitorGradle) -replace 'VERSION_21', 'VERSION_17' | Set-Content $CapacitorGradle
+        Write-Host "Patched capacitor.build.gradle to use Java 17."
+    } else {
+        Write-Host "Warning: capacitor.build.gradle not found at $CapacitorGradle"
+    }
 
 # 7. Compile the Android App using Gradle wrapper
 Write-Host "Compiling debug APK with Gradle..."

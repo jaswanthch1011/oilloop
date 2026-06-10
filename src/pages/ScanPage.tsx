@@ -197,7 +197,7 @@ export default function ScanPage() {
     }
 
     const brand = OIL_BRANDS.find(b => b.name === manualBrand) || OIL_BRANDS[0];
-    const points = calculatePoints(manualVolume, brand.pointsMultiplier);
+    const points = calculatePoints(manualVolume, manualType, brand.pointsMultiplier);
 
     const detection: DetectionResult = {
       brand: manualBrand,
@@ -336,7 +336,7 @@ export default function ScanPage() {
 
   const handleManualSubmit = () => {
     const brand = OIL_BRANDS.find(b => b.name === manualBrand) || OIL_BRANDS[0];
-    const points = calculatePoints(manualVolume, brand.pointsMultiplier);
+    const points = calculatePoints(manualVolume, manualType, brand.pointsMultiplier);
 
     const detection: DetectionResult = {
       brand: manualBrand || brand.name,
@@ -628,21 +628,6 @@ export default function ScanPage() {
               </p>
             </div>
 
-            {/* What was detected */}
-            {errorDetections.length > 0 && (
-              <div className="card-base p-4 mb-4">
-                <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>What the AI detected instead:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {errorDetections.map((d, i) => (
-                    <span key={i} className="px-2 py-1 rounded-lg text-[10px] font-medium"
-                      style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
-                      {d}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Debug details (expandable) */}
             {errorDetails.length > 0 && (
               <div className="mb-4">
@@ -880,10 +865,12 @@ export default function ScanPage() {
             )}
 
             {/* Points awarded */}
-            <div className="card-base p-5 mb-6 text-center" style={{ background: 'var(--glow-color)' }}>
-              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Points Awarded</p>
-              <p className="text-4xl font-bold font-display gradient-text">+{result.pointsAwarded}</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Added to your balance</p>
+            <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+              <div className="w-full max-w-lg rounded-t-3xl p-6 pb-8 animate-slide-up" style={{ background: 'var(--bg-card)' }}>
+                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Points Awarded</p>
+                <p className="text-4xl font-bold font-display gradient-text">+{result.pointsAwarded}</p>
+                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Added to your balance</p>
+              </div>
             </div>
 
             <button onClick={reset} className="btn-primary w-full mb-3">Scan Another</button>
