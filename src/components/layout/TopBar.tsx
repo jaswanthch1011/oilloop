@@ -44,9 +44,9 @@ export default function TopBar({ title, showBack = false, showNotifications = tr
         )}
         {isHome && !title && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
-              style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
-              ♻️
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+              style={{ background: 'var(--bg-card)' }}>
+              <img src="/logo.png" alt="OilLoop Logo" className="w-full h-full object-cover" />
             </div>
             <span className="text-xl font-bold font-display gradient-text">OilLoop</span>
           </div>

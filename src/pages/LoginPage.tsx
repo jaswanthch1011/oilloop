@@ -38,9 +38,9 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col justify-center px-6 py-12 relative z-10 max-w-lg mx-auto w-full">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg"
-            style={{ background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))' }}>
-            ♻️
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg"
+            style={{ background: 'var(--bg-card)' }}>
+            <img src="/logo.png" alt="OilLoop Logo" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-2xl font-bold font-display gradient-text">OilLoop</h1>
