@@ -170,9 +170,6 @@ export default function LoginPage() {
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <><span>Sign In as {role === 'admin' ? 'Admin' : 'User'}</span><ArrowRight size={18} /></>}
             </button>
-            <p className="text-xs text-center mt-1" style={{ color: 'var(--text-muted)' }}>
-              <strong>Demo:</strong> {role === 'admin' ? 'Email is pre-filled. Use any password.' : 'Use any email & password.'}
-            </p>
         </form>
 
         {error && (

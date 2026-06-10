@@ -202,8 +202,8 @@ export default function RewardsPage() {
 
         {/* Redeem Modal */}
         {redeemingId && !showSuccess && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="w-full max-w-lg rounded-t-3xl p-6 animate-slide-up" style={{ background: 'var(--bg-card)' }}>
+          <div className="fixed inset-0 z-[100] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+            <div className="w-full max-w-lg rounded-t-3xl p-6 pb-12 animate-slide-up" style={{ background: 'var(--bg-card)' }}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold font-display" style={{ color: 'var(--text-primary)' }}>Confirm Redemption</h3>
                 <button onClick={() => setRedeemingId(null)} className="p-1"><X size={20} style={{ color: 'var(--text-muted)' }} /></button>
@@ -223,6 +223,8 @@ export default function RewardsPage() {
                       <span className="text-lg font-bold" style={{ color: 'var(--brand-primary)' }}>{reward.pointsCost} pts</span>
                     </div>
                     <button onClick={confirmRedeem} className="btn-primary w-full">Confirm Redemption</button>
+                    {/* Extra space for navigation bar clearance */}
+                    <div className="h-10" />
                   </>
                 );
               })()}
@@ -232,7 +234,7 @@ export default function RewardsPage() {
 
         {/* Success overlay */}
         {showSuccess && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
             <div className="p-8 rounded-3xl text-center animate-scale-in" style={{ background: 'var(--bg-card)' }}>
               <CheckCircle2 size={48} style={{ color: 'var(--brand-primary)' }} className="mx-auto mb-3" />
               <h3 className="text-lg font-bold font-display" style={{ color: 'var(--text-primary)' }}>Redeemed! 🎉</h3>

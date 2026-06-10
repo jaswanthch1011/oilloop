@@ -91,21 +91,13 @@ export const OIL_SIGNATURES: OilSignature[] = [
 // These are the actual ImageNet class names that MobileNet v2 can return
 const BOTTLE_MOBILENET_KEYWORDS = [
   'water bottle',
-  'pop bottle', 'soda bottle',
-  'wine bottle',
-  'beer bottle',
   'bottle',
   'whiskey jug',
   'jug',
   'water jug',
   'jar',
-  'vase',
   'pitcher',
   'flask',
-  'beer glass',
-  'goblet',
-  'cup',
-  'oil filter',
   'plastic bottle',
   'milk can',
   'canteen',
@@ -162,6 +154,16 @@ const MOBILENET_REJECTION_KEYWORDS = [
   'chair', 'couch', 'sofa', 'bed', 'desk', 'table',
   'toilet', 'bathtub', 'shower',
   'teddy bear', 'toy', 'doll', 'ball',
+  'wine bottle', 'beer bottle', 'pop bottle', 'soda bottle',
+  'beer glass', 'goblet', 'wine glass',
+  'coffee', 'tea', 'espresso', 'mug', 'cup', 'teacup',
+  'bread', 'cake', 'cookie', 'biscuit', 'muffin', 'pastry', 'bun',
+  'pizza', 'hamburger', 'burger', 'sandwich', 'hotdog',
+  'fruit', 'apple', 'banana', 'orange', 'strawberry', 'grape', 'lemon',
+  'vegetable', 'broccoli', 'carrot', 'potato', 'tomato', 'cucumber',
+  'meat', 'steak', 'chicken', 'fish', 'egg', 'omelet',
+  'ice cream', 'chocolate', 'candy', 'honey', 'syrup', 'juice',
+  'oil filter', 'engine', 'machine', 'tool',
 ];
 
 export interface ClassificationResult {
@@ -489,6 +491,15 @@ export async function classifyOilImage(
     );
   }
 
+  // Rule 5: HIGH CONFIDENCE REJECTION — if the AI is very sure it's a non-oil object
+  if (mnetSeesRejection && mnetRejectionProb > 0.45) {
+    details.push(`❌ REJECTED: High-confidence non-oil object (${mnetRejectionLabel})`);
+    return makeErrorResult(
+      `❌ Object Identified: ${mnetRejectionLabel.split(',')[0].toUpperCase()}\n\nThis is not a cooking oil container. Please scan used cooking oil to earn points.`,
+      details, allDetectionLabels
+    );
+  }
+
   details.push(`✅ Passed all validation gates`);
 
   // ── Stage 5: Color Analysis ──
@@ -507,7 +518,8 @@ export async function classifyOilImage(
   details.push(`Color: H=${colorAnalysis.hue} S=${colorAnalysis.saturation} L=${colorAnalysis.lightness} (${colorAnalysis.dominantColor})`);
 
   // ── Stage 6: Match against oil signatures ──
-  const scores: { sig: OilSignature; score: number }[] = [];
+  const MIN_OIL_MATCH_SCORE = 42; // Threshold for accepting as oil
+  const scores: { sig: OilSignature; score: number; cScore: number }[] = [];
 
   for (const sig of OIL_SIGNATURES) {
     let matchScore = 0;
@@ -528,13 +540,26 @@ export async function classifyOilImage(
     // Food/oil context bonus
     if (mnetSeesFoodOil) matchScore += 10;
 
-    scores.push({ sig, score: matchScore });
+    scores.push({ sig, score: matchScore, cScore });
   }
 
   scores.sort((a, b) => b.score - a.score);
 
   const bestMatch = scores[0];
   const sig = bestMatch.sig;
+
+  details.push(`Final validation: best score ${bestMatch.score.toFixed(1)} (min required: ${MIN_OIL_MATCH_SCORE})`);
+
+  // ══════════════════════════════════════════════════════════
+  // ── GATE 3: Final score threshold (Is it actually oil?) ──
+  // ══════════════════════════════════════════════════════════
+  if (bestMatch.score < MIN_OIL_MATCH_SCORE) {
+    details.push(`❌ REJECTED: Low match score (${bestMatch.score.toFixed(1)})`);
+    return makeErrorResult(
+      `❌ Could not verify as Cooking Oil.\n\nWhile the AI saw a container, the contents do not match any known cooking oil profiles. It might be water, soda, or a different liquid.\n\nTips:\n• Ensure the oil color is visible\n• Avoid scanning empty bottles\n• Remove large labels if they cover the oil`,
+      details, allDetectionLabels
+    );
+  }
 
   // Calculate confidence based on match score (normalize to 60-95%)
   const rawConfidence = Math.min(bestMatch.score, 100);

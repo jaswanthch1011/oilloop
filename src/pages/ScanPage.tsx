@@ -34,6 +34,7 @@ export default function ScanPage() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [errorTitle, setErrorTitle] = useState('Scan Failed');
   const [errorDetails, setErrorDetails] = useState<string[]>([]);
   const [errorDetections, setErrorDetections] = useState<string[]>([]);
   const [showDebug, setShowDebug] = useState(false);
@@ -96,7 +97,7 @@ export default function ScanPage() {
   const [cameraTimeout, setCameraTimeout] = useState(false);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: any;
     if (state === 'camera' && !videoReady) {
       timer = setTimeout(() => {
         setCameraTimeout(true);
@@ -184,6 +185,7 @@ export default function ScanPage() {
   const processClassification = async (result: ClassificationResult) => {
     if (!result.isOilImage) {
       // REJECTED — not an oil image
+      setErrorTitle(result.errorMessage.includes('verify as Cooking Oil') || result.errorMessage.includes('not a cooking oil') ? 'Not Cooking Oil' : 'Scan Failed');
       setCameraError(result.errorMessage);
       setErrorDetails(result.classificationDetails);
       setErrorDetections(result.mlDetections);
@@ -674,13 +676,17 @@ export default function ScanPage() {
         {state === 'error' && (
           <div className="animate-slide-up pt-8">
             <div className="flex items-center justify-center mb-6">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.12)' }}>
-                <XCircle size={40} style={{ color: '#ef4444' }} />
+              <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: errorTitle === 'Not Cooking Oil' ? 'rgba(245,158,11,0.12)' : 'rgba(239,68,68,0.12)' }}>
+                {errorTitle === 'Not Cooking Oil' ? (
+                  <AlertCircle size={40} style={{ color: '#f59e0b' }} />
+                ) : (
+                  <XCircle size={40} style={{ color: '#ef4444' }} />
+                )}
               </div>
             </div>
 
-            <h2 className="text-xl font-bold font-display text-center mb-4" style={{ color: '#ef4444' }}>
-              Scan Failed
+            <h2 className="text-xl font-bold font-display text-center mb-4" style={{ color: errorTitle === 'Not Cooking Oil' ? '#f59e0b' : '#ef4444' }}>
+              {errorTitle}
             </h2>
 
             {/* Error message */}
