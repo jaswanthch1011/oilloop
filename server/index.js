@@ -253,6 +253,22 @@ app.put('/api/pickups/:id/status', async (req, res) => {
 
     await db.run('UPDATE pickups SET status = ? WHERE id = ?', [status, id]);
 
+    // Send status update notification to user
+    const statusInfo = {
+      confirmed: { title: 'Pickup Confirmed! 📅', msg: `Your pickup ${id} has been confirmed. A collector will arrive at your slot.`, icon: '📅' },
+      picked_up: { title: 'Oil Picked Up! 🚚', msg: `Your oil container for order ${id} was picked up and is headed to processing.`, icon: '🚚' },
+      processed: { title: 'Oil Processed! ⛽', msg: `Success! Your recycled oil has been processed into high-quality biodiesel.`, icon: '⚡' },
+      completed: { title: 'Order Completed! 🎉', msg: `Recycling order ${id} is officially complete. Thank you!`, icon: '🎉' }
+    };
+
+    if (statusInfo[status]) {
+      const { title, msg, icon } = statusInfo[status];
+      await db.run(
+        `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['n-' + generateId(), pickup.userId, 'system', title, msg, 0, new Date().toISOString(), icon]
+      );
+    }
+
     if (status === 'completed') {
       const user = await db.get('SELECT * FROM users WHERE id = ?', [pickup.userId]);
       if (user) {
@@ -482,6 +498,20 @@ app.delete('/api/notifications/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/notifications', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'UserId required' });
+
+  try {
+    const db = getDb();
+    await db.run('DELETE FROM notifications WHERE userId = ?', [userId]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Clear notifications error:', err);
+    res.status(500).json({ error: 'Server database error' });
+  }
+});
+
 // ─── CHATBOT API ENDPOINT ───
 
 const knowledgeBase = {
@@ -619,17 +649,21 @@ app.get('/api/admin/stats', async (req, res) => {
     
     // Total users (excluding admin)
     const userCountResult = await db.get('SELECT COUNT(*) as count FROM users WHERE role = "user"');
-    const totalUsers = (userCountResult?.count || 0) + 156; // baseline + db users
+    const totalUsers = userCountResult?.count || 0;
 
-    // Total liters recycled
-    const litersResult = await db.get('SELECT SUM(estimatedVolume) as sum FROM pickups WHERE status IN ("completed", "processed", "picked_up")');
-    const totalLiters = (litersResult?.sum || 0) + 49.0; // baseline + db volume
+    // Total liters recycled (Aggregated from all users)
+    const litersResult = await db.get('SELECT SUM(totalLitersRecycled) as sum FROM users WHERE role = "user"');
+    const totalLiters = litersResult?.sum || 0;
 
     // Active pickups count (scheduled, confirmed, picked_up)
     const activePickupsResult = await db.get('SELECT COUNT(*) as count FROM pickups WHERE status IN ("scheduled", "confirmed", "picked_up")');
     const activePickups = activePickupsResult?.count || 0;
 
-    // Total redemptions
+    // Completed pickups count
+    const completedPickupsResult = await db.get('SELECT COUNT(*) as count FROM pickups WHERE status = "completed"');
+    const completedPickups = completedPickupsResult?.count || 0;
+
+    // Total redemptions (marketplace)
     const redemptionsResult = await db.get('SELECT COUNT(*) as count FROM redemptions');
     const totalRedemptions = redemptionsResult?.count || 0;
 
@@ -649,17 +683,11 @@ app.get('/api/admin/stats', async (req, res) => {
       liters: row.liters
     }));
 
-    // If dailyCollection is empty, add some mock fallback items to look nice
+    // If dailyCollection is empty, return empty array
     if (dailyCollection.length === 0) {
-      dailyCollection.push(
-        { date: '01 Jun', liters: 45 },
-        { date: '02 Jun', liters: 68 },
-        { date: '03 Jun', liters: 55 },
-        { date: '04 Jun', liters: 90 },
-        { date: '05 Jun', liters: 120 },
-        { date: '06 Jun', liters: 80 },
-        { date: '07 Jun', liters: 145 }
-      );
+      // Just keep it empty or add today's date with 0
+      const today = new Date().toLocaleDateString('en', { day: '2-digit', month: 'short' });
+      dailyCollection.push({ date: today, liters: 0 });
     }
 
     // Orders by location
@@ -684,7 +712,7 @@ app.get('/api/admin/stats', async (req, res) => {
       ORDER BY joinedAt ASC
     `);
 
-    let runningTotal = 150; // base users count
+    let runningTotal = 0;
     const userGrowth = userGrowthRaw.map(row => {
       runningTotal += row.count;
       return {
@@ -694,10 +722,9 @@ app.get('/api/admin/stats', async (req, res) => {
     });
 
     if (userGrowth.length === 0) {
+      const today = new Date().toLocaleDateString('en', { day: '2-digit', month: 'short' });
       userGrowth.push(
-        { date: 'May 01', users: 120 },
-        { date: 'May 15', users: 140 },
-        { date: 'Jun 01', users: 155 }
+        { date: today, users: 0 }
       );
     }
 
@@ -705,6 +732,7 @@ app.get('/api/admin/stats', async (req, res) => {
       totalUsers,
       totalLiters,
       activePickups,
+      completedPickups,
       totalRedemptions,
       userGrowth,
       dailyCollection,

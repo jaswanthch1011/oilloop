@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Droplets, CalendarDays, Plus, Search, Check, AlertTriangle, ArrowLeft, Trash2, MapPin } from 'lucide-react';
+import { Shield, Users, Droplets, CalendarDays, Plus, Search, Check, AlertTriangle, ArrowLeft, Trash2, MapPin, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import TopBar from '../components/layout/TopBar';
 import { mockLocations } from '../data/mockData';
 import type { Pickup, Location } from '../types';
+import { apiUrl } from '../lib/api';
 
 export default function AdminDashboardPage() {
   const { user, pickups, updatePickupStatus, addNotification } = useAuth();
@@ -16,13 +17,30 @@ export default function AdminDashboardPage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [locations, setLocations] = useState<Location[]>(mockLocations);
-  
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
   // Form state to add new location
   const [showAddForm, setShowAddForm] = useState(false);
   const [newLocName, setNewLocName] = useState('');
   const [newLocAddress, setNewLocAddress] = useState('');
   const [newLocHours, setNewLocHours] = useState('8:00 AM – 6:00 PM');
   const [newLocDistance, setNewLocDistance] = useState('1.0 km');
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetch(apiUrl('/api/admin/stats'))
+        .then(res => res.json())
+        .then(data => {
+          setStats(data);
+          setLoadingStats(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch admin stats:', err);
+          setLoadingStats(false);
+        });
+    }
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -41,14 +59,23 @@ export default function AdminDashboardPage() {
     );
   }
 
-  // Calculate metrics
-  const totalLiters = pickups.reduce((acc, p) => p.status === 'processed' || p.status === 'completed' ? acc + p.estimatedVolume : acc, 0) + 49; // Adding base mock 49L
-  const activeOrders = pickups.filter(p => p.status === 'scheduled' || p.status === 'confirmed').length;
-  const processedOrders = pickups.filter(p => p.status === 'processed' || p.status === 'completed').length;
-  const totalUsers = 158; // Mocked base user count
+  // Calculate metrics from live stats or local pickups as fallback
+  const totalLiters = stats?.totalLiters !== undefined
+    ? stats.totalLiters
+    : pickups.reduce((acc, p) => (p.status === 'processed' || p.status === 'completed') ? acc + p.estimatedVolume : acc, 0);
+
+  const activeOrders = stats?.activePickups !== undefined
+    ? stats.activePickups
+    : pickups.filter(p => p.status === 'scheduled' || p.status === 'confirmed' || p.status === 'picked_up').length;
+
+  const completedOrders = stats?.completedPickups !== undefined
+    ? stats.completedPickups
+    : pickups.filter(p => p.status === 'completed').length;
+
+  const totalUsers = stats?.totalUsers !== undefined ? stats.totalUsers : 0;
 
   // Status transition handler
-  const handleStatusChange = (pickupId: string, currentStatus: Pickup['status']) => {
+  const handleStatusChange = async (pickupId: string, currentStatus: Pickup['status']) => {
     let nextStatus: Pickup['status'] = 'scheduled';
     let title = '';
     let message = '';
@@ -76,16 +103,13 @@ export default function AdminDashboardPage() {
       icon = '🎉';
     }
 
-    updatePickupStatus(pickupId, nextStatus);
+    await updatePickupStatus(pickupId, nextStatus);
 
-    // Add alert notification to user
-    addNotification({
-      type: nextStatus === 'processed' ? 'reward_alert' : 'system',
-      title,
-      message,
-      read: false,
-      icon,
-    });
+    // Refresh stats after status change
+    fetch(apiUrl('/api/admin/stats'))
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error('Failed to refresh stats:', err));
   };
 
   // Add location helper
@@ -120,22 +144,14 @@ export default function AdminDashboardPage() {
     setLocations(locations.filter(loc => loc.id !== id));
   };
 
-  // Recharts Mock Data for Admin
-  const adminMonthlyData = [
-    { date: '01 Jun', liters: 45 },
-    { date: '02 Jun', liters: 68 },
-    { date: '03 Jun', liters: 55 },
-    { date: '04 Jun', liters: 90 },
-    { date: '05 Jun', liters: 120 },
-    { date: '06 Jun', liters: 80 },
-    { date: '07 Jun', liters: 145 },
-  ];
+  // Analytics chart data
+  const adminMonthlyData = stats?.dailyCollection || [];
 
   const locationChartData = locations.map(loc => {
     const ordersCount = pickups.filter(p => p.locationId === loc.id).length;
     return {
       name: loc.name.split('—')[1]?.trim() || loc.name.slice(0, 12),
-      orders: ordersCount + Math.floor(Math.random() * 8) + 2, // adding base visual volume
+      orders: ordersCount,
     };
   });
 
@@ -198,7 +214,7 @@ export default function AdminDashboardPage() {
               </div>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Completed Orders</span>
             </div>
-            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{processedOrders}</p>
+            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{completedOrders}</p>
           </div>
         </div>
 

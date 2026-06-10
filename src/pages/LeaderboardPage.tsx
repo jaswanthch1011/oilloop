@@ -1,22 +1,43 @@
-import React, { useState } from 'react';
-import { Trophy, Medal, Crown, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trophy, Medal, Crown, TrendingUp, Loader2 } from 'lucide-react';
 import TopBar from '../components/layout/TopBar';
 import { mockLeaderboard } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import { mockBadges } from '../data/mockData';
 import { ECO_LEVELS } from '../lib/constants';
+import { apiUrl } from '../lib/api';
 
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<'weekly' | 'monthly' | 'all'>('monthly');
   const [tab, setTab] = useState<'leaderboard' | 'badges' | 'levels'>('leaderboard');
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (tab === 'leaderboard') {
+      setLoading(true);
+      fetch(apiUrl('/api/leaderboard'))
+        .then(res => res.json())
+        .then(data => {
+          setLeaderboard(data.leaderboard);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch leaderboard:', err);
+          setLoading(false);
+          // Fallback to mock
+          setLeaderboard(mockLeaderboard);
+        });
+    }
+  }, [tab]);
 
   const podiumColors = ['#f59e0b', '#94a3b8', '#cd7f32'];
   const podiumIcons = [Crown, Trophy, Medal];
 
-  // Dynamic leaderboard that synchronizes with the actual user points in AuthContext
-  const dynamicLeaderboard = [...mockLeaderboard].map(entry => {
-    if (entry.isCurrentUser && user) {
+  // Dynamic leaderboard that merges server data with current user state
+  const dynamicLeaderboard = [...leaderboard].map(entry => {
+    if (entry.userId === user?.id && user) {
       return {
         ...entry,
         name: user.name,
@@ -24,10 +45,26 @@ export default function LeaderboardPage() {
         points: user.totalPoints,
         liters: user.totalLitersRecycled,
         level: user.ecoLevel,
+        isCurrentUser: true,
       };
     }
     return entry;
   }).sort((a, b) => b.points - a.points);
+
+  // If user is not in the top leaderboard from server, add them at the end for visual
+  if (user && !dynamicLeaderboard.find(e => e.userId === user.id)) {
+    dynamicLeaderboard.push({
+      rank: 0, // will be re-indexed
+      userId: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      points: user.totalPoints,
+      liters: user.totalLitersRecycled,
+      level: user.ecoLevel,
+      isCurrentUser: true,
+    });
+    dynamicLeaderboard.sort((a, b) => b.points - a.points);
+  }
 
   // Re-index ranks based on new points sorting
   dynamicLeaderboard.forEach((entry, idx) => {
@@ -59,8 +96,15 @@ export default function LeaderboardPage() {
         {/* Leaderboard Tab */}
         {tab === 'leaderboard' && (
           <div className="animate-slide-up">
-            {/* Period filter */}
-            <div className="flex gap-2 mb-6">
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 size={32} className="animate-spin text-green-500 mb-4" />
+                <p className="text-sm text-zinc-500">Loading global rankings...</p>
+              </div>
+            ) : (
+              <>
+                {/* Period filter */}
+                <div className="flex gap-2 mb-6">
               {(['weekly', 'monthly', 'all'] as const).map(p => (
                 <button
                   key={p}
@@ -135,8 +179,10 @@ export default function LeaderboardPage() {
                 </div>
               ))}
             </div>
-          </div>
+          </>
         )}
+      </div>
+    )}
 
         {/* Badges Tab */}
         {tab === 'badges' && (

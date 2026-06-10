@@ -40,6 +40,8 @@ export default function ScanPage() {
   const [scanProgress, setScanProgress] = useState(0);
   const [scanStage, setScanStage] = useState('');
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [videoReady, setVideoReady] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
 
   // Machine Learning temporary detection states (for user details form confirmation)
   const [mlDetectionsList, setMlDetectionsList] = useState<string[]>([]);
@@ -91,18 +93,32 @@ export default function ScanPage() {
     };
   }, [loadAllModels, stopCamera]);
 
+  const [cameraTimeout, setCameraTimeout] = useState(false);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (state === 'camera' && !videoReady) {
+      timer = setTimeout(() => {
+        setCameraTimeout(true);
+      }, 7000);
+    } else {
+      setCameraTimeout(false);
+    }
+    return () => clearTimeout(timer);
+  }, [state, videoReady]);
+
   // Handle camera stream lifecycle based on state
   useEffect(() => {
     let activeStream: MediaStream | null = null;
     
     const enableCamera = async () => {
       if (state !== 'camera') return;
+      setVideoReady(false);
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } },
         });
         
-        // Clean up old stream if it exists
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(t => t.stop());
         }
@@ -126,10 +142,10 @@ export default function ScanPage() {
     };
 
     if (state === 'camera') {
-      // Give React a tiny tick to ensure the video DOM element is fully mounted
+      // Give React a bit more time to ensure the video DOM element is fully mounted and ready
       const timer = setTimeout(() => {
         enableCamera();
-      }, 50);
+      }, 150);
       return () => clearTimeout(timer);
     } else {
       stopCamera();
@@ -236,6 +252,8 @@ export default function ScanPage() {
 
 
   const captureAndAnalyze = async () => {
+    if (isCapturing) return;
+    setIsCapturing(true);
     setState('scanning');
     setScanProgress(0);
     setScanStage('Initializing...');
@@ -270,6 +288,7 @@ export default function ScanPage() {
     }
 
     cleanupProgress();
+    setIsCapturing(false);
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -490,30 +509,73 @@ export default function ScanPage() {
         {/* ═══════ CAMERA VIEW ═══════ */}
         {state === 'camera' && (
           <div className="flex flex-col items-center animate-scale-in">
-            <div className="relative w-full rounded-3xl overflow-hidden mb-6" style={{ aspectRatio: '4/3', background: '#000' }}>
-              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+            <div className="relative w-full rounded-3xl overflow-hidden mb-6 shadow-2xl" style={{ aspectRatio: '4/3', background: '#000' }}>
+              {!videoReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10" style={{ background: 'var(--bg-secondary)' }}>
+                  <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin mb-4" style={{ borderColor: 'var(--brand-primary)', borderTopColor: 'transparent' }} />
+                  <p className="text-xs font-medium animate-pulse" style={{ color: 'var(--text-muted)' }}>Waking up camera...</p>
+
+                  {cameraTimeout && (
+                    <div className="mt-6 animate-slide-up text-center px-6">
+                      <p className="text-[10px] mb-3" style={{ color: '#ef4444' }}>Taking longer than usual...</p>
+                      <button
+                        onClick={() => { setState('idle'); setTimeout(() => setState('camera'), 100); }}
+                        className="btn-secondary py-2 px-4 text-xs"
+                      >
+                        Reset Camera
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <video
+                ref={videoRef}
+                className={`w-full h-full object-cover transition-opacity duration-500 ${videoReady ? 'opacity-100' : 'opacity-0'}`}
+                playsInline
+                muted
+                onLoadedMetadata={() => setVideoReady(true)}
+              />
               <canvas ref={canvasRef} className="absolute inset-0 w-full h-full hidden" />
 
               {/* Scan overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-56 h-56 relative">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-3 border-l-3 rounded-tl-lg" style={{ borderColor: 'var(--brand-primary)', borderWidth: 3 }} />
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-3 border-r-3 rounded-tr-lg" style={{ borderColor: 'var(--brand-primary)', borderWidth: 3 }} />
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-3 border-l-3 rounded-bl-lg" style={{ borderColor: 'var(--brand-primary)', borderWidth: 3 }} />
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-3 border-r-3 rounded-br-lg" style={{ borderColor: 'var(--brand-primary)', borderWidth: 3 }} />
-                  <div className="absolute left-2 right-2 h-0.5 animate-scan-line" style={{ background: 'linear-gradient(90deg, transparent, var(--brand-primary), transparent)' }} />
-                </div>
-              </div>
+              {videoReady && (
+                <div className="absolute inset-0 flex items-center justify-center animate-fade-in">
+                  <div className="w-64 h-64 relative">
+                    <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-2xl" style={{ borderColor: 'var(--brand-primary)' }} />
+                    <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-2xl" style={{ borderColor: 'var(--brand-primary)' }} />
+                    <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-2xl" style={{ borderColor: 'var(--brand-primary)' }} />
+                    <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 rounded-br-2xl" style={{ borderColor: 'var(--brand-primary)' }} />
 
-              <div className="absolute bottom-4 left-0 right-0 text-center">
-                <span className="px-4 py-2 rounded-full text-xs font-medium text-white" style={{ background: 'rgba(0,0,0,0.6)' }}>
-                  Position oil container inside the frame
+                    {/* Animated scan line */}
+                    <div className="animate-scan-line" />
+                  </div>
+                </div>
+              )}
+
+              <div className="absolute bottom-6 left-0 right-0 text-center z-20">
+                <span className="px-4 py-2 rounded-full text-xs font-semibold text-white shadow-lg backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.5)' }}>
+                  {videoReady ? 'Position container inside the frame' : 'Initializing...'}
                 </span>
               </div>
             </div>
 
-            <button onClick={captureAndAnalyze} className="btn-primary w-full flex items-center justify-center gap-2 mb-3">
-              <ScanLine size={18} /> Capture & Analyze
+            <button
+              onClick={captureAndAnalyze}
+              disabled={!videoReady || isCapturing}
+              className={`btn-primary w-full flex items-center justify-center gap-2 mb-3 ${(!videoReady || isCapturing) ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+            >
+              {isCapturing ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <ScanLine size={18} />
+                  Capture & Analyze
+                </>
+              )}
             </button>
             <button onClick={() => { stopCamera(); reset(); }} className="btn-ghost w-full text-center">Cancel</button>
           </div>
@@ -864,14 +926,28 @@ export default function ScanPage() {
               </div>
             )}
 
-            {/* Points awarded */}
-            <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-              <div className="w-full max-w-lg rounded-t-3xl p-6 pb-8 animate-slide-up" style={{ background: 'var(--bg-card)' }}>
-                <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Points Awarded</p>
-                <p className="text-4xl font-bold font-display gradient-text">+{result.pointsAwarded}</p>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Added to your balance</p>
+            {/* Points awarded - Modal style with backdrop blur */}
+            {showConfetti && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-fade-in">
+                <div className="w-full max-w-xs rounded-3xl p-8 text-center shadow-2xl animate-scale-in" style={{ background: 'var(--bg-card)' }}>
+                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle2 size={40} className="text-green-500" />
+                  </div>
+                  <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>You Earned</p>
+                  <p className="text-5xl font-bold font-display gradient-text mb-2">+{result.pointsAwarded}</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Points!</p>
+                  <div className="mt-6 flex flex-wrap justify-center gap-2">
+                    <span className="badge badge-success">+{result.volume}L Recycled</span>
+                  </div>
+                  <button
+                    onClick={() => setShowConfetti(false)}
+                    className="btn-primary w-full mt-8"
+                  >
+                    Awesome!
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <button onClick={reset} className="btn-primary w-full mb-3">Scan Another</button>
             <button onClick={() => setState('manual')} className="btn-secondary w-full">Edit Details</button>

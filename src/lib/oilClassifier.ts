@@ -248,7 +248,7 @@ function analyzeColors(
   const avgS = totalS / count;
   const avgL = totalL / count;
 
-  let dominantColor = 'unknown';
+  let dominantColor: string;
   if (avgS < 15) {
     dominantColor = avgL > 70 ? 'white/clear' : avgL > 40 ? 'gray' : 'dark';
   } else if (avgH >= 0 && avgH < 15) {

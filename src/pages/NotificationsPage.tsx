@@ -7,13 +7,19 @@ import { getRelativeTime } from '../lib/utils';
 import type { Notification } from '../types';
 
 export default function NotificationsPage() {
-  const { notifications, markNotificationRead, unreadCount } = useAuth();
+  const { notifications, markNotificationRead, deleteNotification, clearAllNotifications, unreadCount } = useAuth();
   const navigate = useNavigate();
 
   const handleMarkAllRead = () => {
     notifications.forEach(n => {
       if (!n.read) markNotificationRead(n.id);
     });
+  };
+
+  const handleDeleteAll = () => {
+    if (window.confirm('Are you sure you want to delete all notifications?')) {
+      clearAllNotifications();
+    }
   };
 
   const getIcon = (type: Notification['type'], defaultIcon: string) => {
@@ -63,7 +69,7 @@ export default function NotificationsPage() {
             <div
               key={n.id}
               onClick={() => !n.read && markNotificationRead(n.id)}
-              className={`card-base p-4 flex gap-4 cursor-pointer relative transition-all ${!n.read ? 'border-l-4' : 'opacity-75'}`}
+              className={`card-base p-4 flex gap-4 cursor-pointer relative transition-all group ${!n.read ? 'border-l-4' : 'opacity-75'}`}
               style={{
                 borderLeftColor: !n.read ? 'var(--brand-primary)' : undefined,
                 background: !n.read ? 'var(--bg-card)' : 'var(--bg-secondary)',
@@ -77,7 +83,7 @@ export default function NotificationsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start gap-2">
-                  <h4 className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                  <h4 className="text-sm font-bold truncate pr-4" style={{ color: 'var(--text-primary)' }}>
                     {n.title}
                   </h4>
                   <span className="text-[10px] whitespace-nowrap flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
@@ -88,6 +94,33 @@ export default function NotificationsPage() {
                   {n.message}
                 </p>
               </div>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteNotification(n.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-500 transition-opacity"
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
+
+                {!n.read && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markNotificationRead(n.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 p-2 text-blue-400 hover:text-blue-500 transition-opacity"
+                    title="Mark as read"
+                  >
+                    <CheckCheck size={14} />
+                  </button>
+                )}
+              </div>
+
               {!n.read && (
                 <div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: 'var(--brand-primary)' }} />
               )}
@@ -109,15 +142,23 @@ export default function NotificationsPage() {
             <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
               {unreadCount > 0 ? `${unreadCount} unread alerts` : 'All caught up!'}
             </span>
-            {unreadCount > 0 && (
+            <div className="flex gap-4">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="flex items-center gap-1.5 text-xs font-bold"
+                  style={{ color: 'var(--brand-primary)' }}
+                >
+                  <CheckCheck size={14} /> Mark all read
+                </button>
+              )}
               <button 
-                onClick={handleMarkAllRead}
-                className="flex items-center gap-1.5 text-xs font-bold"
-                style={{ color: 'var(--brand-primary)' }}
+                onClick={handleDeleteAll}
+                className="flex items-center gap-1.5 text-xs font-bold text-red-500"
               >
-                <CheckCheck size={14} /> Mark all read
+                <Trash2 size={14} /> Clear All
               </button>
-            )}
+            </div>
           </div>
         )}
 
