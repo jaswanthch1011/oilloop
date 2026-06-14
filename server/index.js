@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { initDb, getDb } from './db.js';
+import { initDb, User, Pickup, Scan, Redemption, Notification } from './db.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -51,28 +51,32 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 
   try {
-    const db = getDb();
-    const exists = await db.get('SELECT * FROM users WHERE email = ? OR phone = ?', [email, phone]);
+    const exists = await User.findOne({ $or: [{ email }, { phone }] });
     if (exists) {
       return res.status(400).json({ error: 'User with this email or phone already exists' });
     }
 
     const referralCode = `OILLOOP-${name.substring(0, 3).toUpperCase()}${Math.floor(10 + Math.random() * 90)}`;
     const id = generateId();
-    const ecoLevel = JSON.stringify(ECO_LEVELS[0]);
-    const badges = JSON.stringify([]);
 
-    await db.run(
-      `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0.0, ?, ?, 0, ?, 0)`,
-      [id, name, email, phone, password, '🌿', 'user', ecoLevel, badges, referralCode, new Date().toISOString().split('T')[0]]
-    );
+    const user = await User.create({
+      id,
+      name,
+      email,
+      phone,
+      password,
+      avatar: '🌿',
+      role: 'user',
+      ecoLevel: ECO_LEVELS[0],
+      badges: [],
+      referralCode,
+      joinedAt: new Date()
+    });
 
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
-    user.ecoLevel = JSON.parse(user.ecoLevel);
-    user.badges = JSON.parse(user.badges);
-    delete user.password;
+    const userObj = user.toObject();
+    delete userObj.password;
 
-    res.status(201).json({ user });
+    res.status(201).json({ user: userObj });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -83,23 +87,21 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password, role } = req.body;
 
   try {
-    const db = getDb();
     let user;
     if (role === 'admin' || email === 'admin@oilloop.in') {
-      user = await db.get('SELECT * FROM users WHERE email = "admin@oilloop.in" AND role = "admin"');
+      user = await User.findOne({ email: 'admin@oilloop.in', role: 'admin' });
     } else {
-      user = await db.get('SELECT * FROM users WHERE email = ? AND role = "user"', [email]);
+      user = await User.findOne({ email, role: 'user' });
     }
 
     if (!user || user.password !== password) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    user.ecoLevel = JSON.parse(user.ecoLevel);
-    user.badges = JSON.parse(user.badges);
-    delete user.password;
+    const userObj = user.toObject();
+    delete userObj.password;
 
-    res.json({ user });
+    res.json({ user: userObj });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -113,24 +115,31 @@ app.post('/api/auth/login-otp', async (req, res) => {
   }
 
   try {
-    const db = getDb();
-    let user = await db.get('SELECT * FROM users WHERE phone = ? AND role = "user"', [phone]);
+    let user = await User.findOne({ phone, role: 'user' });
     
     if (!user) {
       const referralCode = `OILLOOP-PHONE${Math.floor(10 + Math.random() * 90)}`;
       const id = generateId();
-      await db.run(
-        `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0.0, ?, ?, 0, ?, 1)`,
-        [id, 'Phone User', `${phone}@oilloop.in`, phone, 'password', '🌿', 'user', JSON.stringify(ECO_LEVELS[0]), JSON.stringify([]), referralCode, new Date().toISOString().split('T')[0]]
-      );
-      user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+      user = await User.create({
+        id,
+        name: 'Phone User',
+        email: `${phone}@oilloop.in`,
+        phone,
+        password: 'password',
+        avatar: '🌿',
+        role: 'user',
+        ecoLevel: ECO_LEVELS[0],
+        badges: [],
+        referralCode,
+        joinedAt: new Date(),
+        streak: 1
+      });
     }
 
-    user.ecoLevel = JSON.parse(user.ecoLevel);
-    user.badges = JSON.parse(user.badges);
-    delete user.password;
+    const userObj = user.toObject();
+    delete userObj.password;
 
-    res.json({ user });
+    res.json({ user: userObj });
   } catch (err) {
     console.error('OTP login error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -143,20 +152,19 @@ app.put('/api/user/profile', async (req, res) => {
   const { userId, name, email, phone, avatar } = req.body;
 
   try {
-    const db = getDb();
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await User.findOne({ id: userId });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (name !== undefined) await db.run('UPDATE users SET name = ? WHERE id = ?', [name, userId]);
-    if (email !== undefined) await db.run('UPDATE users SET email = ? WHERE id = ?', [email, userId]);
-    if (phone !== undefined) await db.run('UPDATE users SET phone = ? WHERE id = ?', [phone, userId]);
-    if (avatar !== undefined) await db.run('UPDATE users SET avatar = ? WHERE id = ?', [avatar, userId]);
+    if (name !== undefined) user.name = name;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (avatar !== undefined) user.avatar = avatar;
 
-    const updatedUser = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
-    updatedUser.ecoLevel = JSON.parse(updatedUser.ecoLevel);
-    updatedUser.badges = JSON.parse(updatedUser.badges);
+    await user.save();
+
+    const updatedUser = user.toObject();
     delete updatedUser.password;
 
     res.json({ user: updatedUser });
@@ -172,12 +180,11 @@ app.get('/api/pickups', async (req, res) => {
   const { userId, role } = req.query;
 
   try {
-    const db = getDb();
     let pickups;
     if (role === 'admin') {
-      pickups = await db.all('SELECT * FROM pickups ORDER BY createdAt DESC');
+      pickups = await Pickup.find().sort({ createdAt: -1 });
     } else {
-      pickups = await db.all('SELECT * FROM pickups WHERE userId = ? ORDER BY createdAt DESC', [userId]);
+      pickups = await Pickup.find({ userId }).sort({ createdAt: -1 });
     }
     res.json({ pickups });
   } catch (err) {
@@ -187,14 +194,12 @@ app.get('/api/pickups', async (req, res) => {
 });
 
 app.post('/api/pickups', async (req, res) => {
-  // Extract correct keys sent by SchedulePickupPage
   const { userId, locationId, locationName, scheduledDate, scheduledTime, oilType, estimatedVolume, containers } = req.body;
   
   if (!userId || !locationId || !locationName || !scheduledDate || !scheduledTime || !oilType || estimatedVolume === undefined) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Address lookup helper matching data locations
   const locations = {
     loc1: '42, Road No. 10, Jubilee Hills',
     loc2: '15, Road No. 3, Banjara Hills',
@@ -205,34 +210,35 @@ app.post('/api/pickups', async (req, res) => {
   const address = locations[locationId] || 'Jubilee Hills Hub, Hyderabad';
 
   try {
-    const db = getDb();
     const id = 'pk-' + generateId();
-    await db.run(
-      `INSERT INTO pickups VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        userId,
-        locationId,
-        locationName,
-        address,
-        scheduledDate,
-        scheduledTime,
-        oilType,
-        parseFloat(estimatedVolume),
-        parseInt(containers) || 1,
-        'scheduled',
-        new Date().toISOString()
-      ]
-    );
+    const newPickup = await Pickup.create({
+      id,
+      userId,
+      locationId,
+      locationName,
+      address,
+      scheduledDate,
+      scheduledTime,
+      oilType,
+      estimatedVolume: parseFloat(estimatedVolume),
+      containers: parseInt(containers) || 1,
+      status: 'scheduled',
+      createdAt: new Date()
+    });
 
     // Send notification
     const nId = 'n-' + generateId();
-    await db.run(
-      `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [nId, userId, 'pickup_reminder', 'Pickup Scheduled 📅', `Your pickup is scheduled at ${locationName} on ${scheduledDate} at ${scheduledTime}.`, 0, new Date().toISOString(), '📅']
-    );
+    await Notification.create({
+      id: nId,
+      userId,
+      type: 'pickup_reminder',
+      title: 'Pickup Scheduled 📅',
+      message: `Your pickup is scheduled at ${locationName} on ${scheduledDate} at ${scheduledTime}.`,
+      read: false,
+      createdAt: new Date(),
+      icon: '📅'
+    });
 
-    const newPickup = await db.get('SELECT * FROM pickups WHERE id = ?', [id]);
     res.status(201).json({ pickup: newPickup });
   } catch (err) {
     console.error('Schedule pickup error:', err);
@@ -245,13 +251,13 @@ app.put('/api/pickups/:id/status', async (req, res) => {
   const { status } = req.body;
 
   try {
-    const db = getDb();
-    const pickup = await db.get('SELECT * FROM pickups WHERE id = ?', [id]);
+    const pickup = await Pickup.findOne({ id });
     if (!pickup) {
       return res.status(404).json({ error: 'Pickup not found' });
     }
 
-    await db.run('UPDATE pickups SET status = ? WHERE id = ?', [status, id]);
+    pickup.status = status;
+    await pickup.save();
 
     // Send status update notification to user
     const statusInfo = {
@@ -263,47 +269,59 @@ app.put('/api/pickups/:id/status', async (req, res) => {
 
     if (statusInfo[status]) {
       const { title, msg, icon } = statusInfo[status];
-      await db.run(
-        `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        ['n-' + generateId(), pickup.userId, 'system', title, msg, 0, new Date().toISOString(), icon]
-      );
+      await Notification.create({
+        id: 'n-' + generateId(),
+        userId: pickup.userId,
+        type: 'system',
+        title,
+        message: msg,
+        read: false,
+        createdAt: new Date(),
+        icon
+      });
     }
 
     if (status === 'completed') {
-      const user = await db.get('SELECT * FROM users WHERE id = ?', [pickup.userId]);
+      const user = await User.findOne({ id: pickup.userId });
       if (user) {
         const basePoints = Math.round(pickup.estimatedVolume * 50);
         const pointsAwarded = Math.round(basePoints * 1.2);
         
-        const newTotal = user.totalPoints + pointsAwarded;
-        const newAvailable = user.availablePoints + pointsAwarded;
-        const newLiters = user.totalLitersRecycled + pickup.estimatedVolume;
-        const newEcoLevel = updateEcoLevel(newTotal);
+        user.totalPoints += pointsAwarded;
+        user.availablePoints += pointsAwarded;
+        user.totalLitersRecycled += pickup.estimatedVolume;
+        user.ecoLevel = updateEcoLevel(user.totalPoints);
 
-        const currentBadges = JSON.parse(user.badges);
-        if (newLiters >= 10 && !currentBadges.some(b => b.id === 'b3')) {
-          currentBadges.push({ id: 'b3', name: 'Liter Legend', description: 'Recycle 10 liters of cooking oil', icon: '🏆', locked: false, unlockedAt: new Date().toISOString(), requirement: '10L recycled' });
-          await db.run(
-            `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            ['n-' + generateId(), user.id, 'badge_unlock', 'Badge Unlocked! 🏆', 'You earned the "Liter Legend" badge for recycling 10L of oil!', 0, new Date().toISOString(), '🏆']
-          );
+        if (user.totalLitersRecycled >= 10 && !user.badges.includes('b3')) {
+          user.badges.push('b3');
+          await Notification.create({
+            id: 'n-' + generateId(),
+            userId: user.id,
+            type: 'badge_unlock',
+            title: 'Badge Unlocked! 🏆',
+            message: 'You earned the "Liter Legend" badge for recycling 10L of oil!',
+            read: false,
+            createdAt: new Date(),
+            icon: '🏆'
+          });
         }
 
-        await db.run(
-          'UPDATE users SET totalPoints = ?, availablePoints = ?, totalLitersRecycled = ?, ecoLevel = ?, badges = ? WHERE id = ?',
-          [newTotal, newAvailable, newLiters, JSON.stringify(newEcoLevel), JSON.stringify(currentBadges), user.id]
-        );
+        await user.save();
 
-        // Notification
-        await db.run(
-          `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ['n-' + generateId(), user.id, 'reward_alert', 'Points Awarded! ⭐', `You received ${pointsAwarded} points for recycling ${pickup.estimatedVolume}L UCO!`, 0, new Date().toISOString(), '⭐']
-        );
+        await Notification.create({
+          id: 'n-' + generateId(),
+          userId: user.id,
+          type: 'reward_alert',
+          title: 'Points Awarded! ⭐',
+          message: `You received ${pointsAwarded} points for recycling ${pickup.estimatedVolume}L UCO!`,
+          read: false,
+          createdAt: new Date(),
+          icon: '⭐'
+        });
       }
     }
 
-    const updatedPickup = await db.get('SELECT * FROM pickups WHERE id = ?', [id]);
-    res.json({ pickup: updatedPickup });
+    res.json({ pickup });
   } catch (err) {
     console.error('Update pickup status error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -316,8 +334,7 @@ app.get('/api/scans', async (req, res) => {
   const { userId } = req.query;
 
   try {
-    const db = getDb();
-    const scans = await db.all('SELECT * FROM scans WHERE userId = ? ORDER BY scannedAt DESC', [userId]);
+    const scans = await Scan.find({ userId }).sort({ scannedAt: -1 });
     res.json({ scans });
   } catch (err) {
     console.error('Get scans error:', err);
@@ -332,65 +349,84 @@ app.post('/api/scans', async (req, res) => {
   }
 
   try {
-    const db = getDb();
     const id = 'sc-' + generateId();
-    await db.run(
-      `INSERT INTO scans VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, userId, brand, oilType, parseFloat(volume), parseInt(points), new Date().toISOString()]
-    );
+    const newScan = await Scan.create({
+      id,
+      userId,
+      brand,
+      oilType,
+      volume: parseFloat(volume),
+      points: parseInt(points),
+      scannedAt: new Date()
+    });
     
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await User.findOne({ id: userId });
     let updatedUser = null;
     if (user) {
-      const newTotal = user.totalPoints + parseInt(points);
-      const newAvailable = user.availablePoints + parseInt(points);
-      const newLiters = user.totalLitersRecycled + parseFloat(volume);
-      const newStreak = user.streak + 1;
-      const newEcoLevel = updateEcoLevel(newTotal);
+      user.totalPoints += parseInt(points);
+      user.availablePoints += parseInt(points);
+      user.totalLitersRecycled += parseFloat(volume);
+      user.streak += 1;
+      user.ecoLevel = updateEcoLevel(user.totalPoints);
 
-      const currentBadges = JSON.parse(user.badges);
-      // First Drop
-      if (!currentBadges.some(b => b.id === 'b1')) {
-        currentBadges.push({ id: 'b1', name: 'First Drop', description: 'Complete your first oil scan', icon: '💧', locked: false, unlockedAt: new Date().toISOString(), requirement: 'Scan 1 oil packet' });
-        await db.run(
-          `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ['n-' + generateId(), user.id, 'badge_unlock', 'Badge Unlocked! 💧', 'You earned the "First Drop" badge for your first oil scan!', 0, new Date().toISOString(), '💧']
-        );
-      }
-      // Weekly Warrior
-      if (newStreak >= 7 && !currentBadges.some(b => b.id === 'b2')) {
-        currentBadges.push({ id: 'b2', name: 'Weekly Warrior', description: 'Maintain a 7-day recycling streak', icon: '⚔️', locked: false, unlockedAt: new Date().toISOString(), requirement: '7-day streak' });
-        await db.run(
-          `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ['n-' + generateId(), user.id, 'badge_unlock', 'Badge Unlocked! ⚔️', 'You earned the "Weekly Warrior" badge for a 7-day streak!', 0, new Date().toISOString(), '⚔️']
-        );
-      }
-      // Liter Legend
-      if (newLiters >= 10 && !currentBadges.some(b => b.id === 'b3')) {
-        currentBadges.push({ id: 'b3', name: 'Liter Legend', description: 'Recycle 10 liters of cooking oil', icon: '🏆', locked: false, unlockedAt: new Date().toISOString(), requirement: '10L recycled' });
-        await db.run(
-          `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          ['n-' + generateId(), user.id, 'badge_unlock', 'Badge Unlocked! 🏆', 'You earned the "Liter Legend" badge for recycling 10L of oil!', 0, new Date().toISOString(), '🏆']
-        );
+      if (!user.badges.includes('b1')) {
+        user.badges.push('b1');
+        await Notification.create({
+          id: 'n-' + generateId(),
+          userId: user.id,
+          type: 'badge_unlock',
+          title: 'Badge Unlocked! 💧',
+          message: 'You earned the "First Drop" badge for your first oil scan!',
+          read: false,
+          createdAt: new Date(),
+          icon: '💧'
+        });
       }
 
-      await db.run(
-        'UPDATE users SET totalPoints = ?, availablePoints = ?, totalLitersRecycled = ?, ecoLevel = ?, badges = ?, streak = ? WHERE id = ?',
-        [newTotal, newAvailable, newLiters, JSON.stringify(newEcoLevel), JSON.stringify(currentBadges), newStreak, user.id]
-      );
+      if (user.streak >= 7 && !user.badges.includes('b2')) {
+        user.badges.push('b2');
+        await Notification.create({
+          id: 'n-' + generateId(),
+          userId: user.id,
+          type: 'badge_unlock',
+          title: 'Badge Unlocked! ⚔️',
+          message: 'You earned the "Weekly Warrior" badge for a 7-day streak!',
+          read: false,
+          createdAt: new Date(),
+          icon: '⚔️'
+        });
+      }
 
-      // Notification
-      await db.run(
-        `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        ['n-' + generateId(), user.id, 'reward_alert', 'Scanned Successfully! 📷', `You earned ${points} points for scanning ${brand} ${oilType} (${volume}L).`, 0, new Date().toISOString(), '📷']
-      );
+      if (user.totalLitersRecycled >= 10 && !user.badges.includes('b3')) {
+        user.badges.push('b3');
+        await Notification.create({
+          id: 'n-' + generateId(),
+          userId: user.id,
+          type: 'badge_unlock',
+          title: 'Badge Unlocked! 🏆',
+          message: 'You earned the "Liter Legend" badge for recycling 10L of oil!',
+          read: false,
+          createdAt: new Date(),
+          icon: '🏆'
+        });
+      }
 
-      updatedUser = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
-      updatedUser.ecoLevel = JSON.parse(updatedUser.ecoLevel);
-      updatedUser.badges = JSON.parse(updatedUser.badges);
+      await user.save();
+
+      await Notification.create({
+        id: 'n-' + generateId(),
+        userId: user.id,
+        type: 'reward_alert',
+        title: 'Scanned Successfully! 📷',
+        message: `You earned ${points} points for scanning ${brand} ${oilType} (${volume}L).`,
+        read: false,
+        createdAt: new Date(),
+        icon: '📷'
+      });
+
+      updatedUser = user.toObject();
       delete updatedUser.password;
     }
-    const newScan = await db.get('SELECT * FROM scans WHERE id = ?', [id]);
     res.status(201).json({ scan: newScan, user: updatedUser });
   } catch (err) {
     console.error('Scan error:', err);
@@ -404,8 +440,7 @@ app.get('/api/redemptions', async (req, res) => {
   const { userId } = req.query;
 
   try {
-    const db = getDb();
-    const redemptions = await db.all('SELECT * FROM redemptions WHERE userId = ? ORDER BY redeemedAt DESC', [userId]);
+    const redemptions = await Redemption.find({ userId }).sort({ redeemedAt: -1 });
     res.json({ redemptions });
   } catch (err) {
     console.error('Get redemptions error:', err);
@@ -420,33 +455,39 @@ app.post('/api/redemptions', async (req, res) => {
   }
 
   try {
-    const db = getDb();
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    const user = await User.findOne({ id: userId });
     if (!user || user.availablePoints < pointsSpent) {
       return res.status(400).json({ error: 'Insufficient points' });
     }
 
-    const newAvailable = user.availablePoints - pointsSpent;
-    await db.run('UPDATE users SET availablePoints = ? WHERE id = ?', [newAvailable, userId]);
+    user.availablePoints -= pointsSpent;
+    await user.save();
 
     const id = 'rd-' + generateId();
-    await db.run(
-      `INSERT INTO redemptions VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, userId, rewardId, rewardName, parseInt(pointsSpent), 'processing', new Date().toISOString()]
-    );
+    const newRedemption = await Redemption.create({
+      id,
+      userId,
+      rewardId,
+      rewardName,
+      pointsSpent: parseInt(pointsSpent),
+      status: 'processing',
+      redeemedAt: new Date()
+    });
 
-    // Notification
-    await db.run(
-      `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['n-' + generateId(), userId, 'reward_alert', 'Reward Redeemed! 🎁', `You redeemed "${rewardName}" for ${pointsSpent} points. It is now processing!`, 0, new Date().toISOString(), '🎁']
-    );
+    await Notification.create({
+      id: 'n-' + generateId(),
+      userId,
+      type: 'reward_alert',
+      title: 'Reward Redeemed! 🎁',
+      message: `You redeemed "${rewardName}" for ${pointsSpent} points. It is now processing!`,
+      read: false,
+      createdAt: new Date(),
+      icon: '🎁'
+    });
 
-    const updatedUser = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
-    updatedUser.ecoLevel = JSON.parse(updatedUser.ecoLevel);
-    updatedUser.badges = JSON.parse(updatedUser.badges);
+    const updatedUser = user.toObject();
     delete updatedUser.password;
 
-    const newRedemption = await db.get('SELECT * FROM redemptions WHERE id = ?', [id]);
     res.status(201).json({ redemption: newRedemption, user: updatedUser });
   } catch (err) {
     console.error('Redeem error:', err);
@@ -460,10 +501,8 @@ app.get('/api/notifications', async (req, res) => {
   const { userId } = req.query;
 
   try {
-    const db = getDb();
-    const notifications = await db.all('SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC', [userId]);
-    const mapped = notifications.map(n => ({ ...n, read: !!n.read }));
-    res.json({ notifications: mapped });
+    const notifications = await Notification.find({ userId }).sort({ createdAt: -1 });
+    res.json({ notifications });
   } catch (err) {
     console.error('Get notifications error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -474,10 +513,7 @@ app.put('/api/notifications/:id/read', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const db = getDb();
-    await db.run('UPDATE notifications SET read = 1 WHERE id = ?', [id]);
-    const notification = await db.get('SELECT * FROM notifications WHERE id = ?', [id]);
-    if (notification) notification.read = !!notification.read;
+    const notification = await Notification.findOneAndUpdate({ id }, { read: true }, { new: true });
     res.json({ notification });
   } catch (err) {
     console.error('Read notification error:', err);
@@ -489,8 +525,7 @@ app.delete('/api/notifications/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    const db = getDb();
-    await db.run('DELETE FROM notifications WHERE id = ?', [id]);
+    await Notification.deleteOne({ id });
     res.json({ success: true });
   } catch (err) {
     console.error('Delete notification error:', err);
@@ -503,8 +538,7 @@ app.delete('/api/notifications', async (req, res) => {
   if (!userId) return res.status(400).json({ error: 'UserId required' });
 
   try {
-    const db = getDb();
-    await db.run('DELETE FROM notifications WHERE userId = ?', [userId]);
+    await Notification.deleteMany({ userId });
     res.json({ success: true });
   } catch (err) {
     console.error('Clear notifications error:', err);
@@ -625,8 +659,7 @@ app.post('/api/chatbot', (req, res) => {
 
 app.get('/api/leaderboard', async (req, res) => {
   try {
-    const db = getDb();
-    const users = await db.all('SELECT id, name, avatar, totalPoints, totalLitersRecycled, ecoLevel FROM users ORDER BY totalPoints DESC');
+    const users = await User.find().sort({ totalPoints: -1 });
     const leaderboard = users.map((u, index) => ({
       rank: index + 1,
       userId: u.id,
@@ -634,7 +667,7 @@ app.get('/api/leaderboard', async (req, res) => {
       avatar: u.avatar || '👤',
       points: u.totalPoints,
       liters: u.totalLitersRecycled,
-      level: JSON.parse(u.ecoLevel),
+      level: u.ecoLevel,
     }));
     res.json({ leaderboard });
   } catch (err) {
@@ -645,87 +678,76 @@ app.get('/api/leaderboard', async (req, res) => {
 
 app.get('/api/admin/stats', async (req, res) => {
   try {
-    const db = getDb();
+    const totalUsers = await User.countDocuments({ role: 'user' });
+
+    const litersResult = await User.aggregate([
+      { $match: { role: 'user' } },
+      { $group: { _id: null, sum: { $sum: '$totalLitersRecycled' } } }
+    ]);
+    const totalLiters = litersResult[0]?.sum || 0;
+
+    const activePickups = await Pickup.countDocuments({ status: { $in: ['scheduled', 'confirmed', 'picked_up'] } });
+    const completedPickups = await Pickup.countDocuments({ status: 'completed' });
+    const totalRedemptions = await Redemption.countDocuments();
+
+    // Daily Collection Chart data (last 7 days)
+    const dailyCollectionRaw = await Pickup.aggregate([
+      { $match: { status: { $in: ['completed', 'processed', 'picked_up'] } } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          liters: { $sum: "$estimatedVolume" }
+      } },
+      { $sort: { _id: -1 } },
+      { $limit: 7 }
+    ]);
     
-    // Total users (excluding admin)
-    const userCountResult = await db.get('SELECT COUNT(*) as count FROM users WHERE role = "user"');
-    const totalUsers = userCountResult?.count || 0;
-
-    // Total liters recycled (Aggregated from all users)
-    const litersResult = await db.get('SELECT SUM(totalLitersRecycled) as sum FROM users WHERE role = "user"');
-    const totalLiters = litersResult?.sum || 0;
-
-    // Active pickups count (scheduled, confirmed, picked_up)
-    const activePickupsResult = await db.get('SELECT COUNT(*) as count FROM pickups WHERE status IN ("scheduled", "confirmed", "picked_up")');
-    const activePickups = activePickupsResult?.count || 0;
-
-    // Completed pickups count
-    const completedPickupsResult = await db.get('SELECT COUNT(*) as count FROM pickups WHERE status = "completed"');
-    const completedPickups = completedPickupsResult?.count || 0;
-
-    // Total redemptions (marketplace)
-    const redemptionsResult = await db.get('SELECT COUNT(*) as count FROM redemptions');
-    const totalRedemptions = redemptionsResult?.count || 0;
-
-    // Daily Collection Chart data (last 7 days of completed pickups or mock/real combined)
-    const dailyCollectionRaw = await db.all(`
-      SELECT date(createdAt) as date, SUM(estimatedVolume) as liters
-      FROM pickups 
-      WHERE status IN ("completed", "processed", "picked_up") 
-      GROUP BY date(createdAt)
-      ORDER BY date(createdAt) DESC
-      LIMIT 7
-    `);
-    
-    // Format to match chart dates
     const dailyCollection = dailyCollectionRaw.reverse().map(row => ({
-      date: new Date(row.date).toLocaleDateString('en', { day: '2-digit', month: 'short' }),
+      date: new Date(row._id).toLocaleDateString('en', { day: '2-digit', month: 'short' }),
       liters: row.liters
     }));
 
-    // If dailyCollection is empty, return empty array
     if (dailyCollection.length === 0) {
-      // Just keep it empty or add today's date with 0
       const today = new Date().toLocaleDateString('en', { day: '2-digit', month: 'short' });
       dailyCollection.push({ date: today, liters: 0 });
     }
 
     // Orders by location
-    const locationStats = await db.all(`
-      SELECT locationId, locationName, COUNT(*) as orders, SUM(estimatedVolume) as liters
-      FROM pickups
-      GROUP BY locationId
-    `);
+    const locationStats = await Pickup.aggregate([
+      { $group: {
+          _id: { locationId: "$locationId", locationName: "$locationName" },
+          orders: { $sum: 1 },
+          liters: { $sum: "$estimatedVolume" }
+      } }
+    ]);
 
     const ordersByLocation = locationStats.map(loc => ({
-      location: loc.locationName.split('—')[1]?.trim() || loc.locationName.slice(0, 12),
+      location: loc._id.locationName.split('—')[1]?.trim() || loc._id.locationName.slice(0, 12),
       orders: loc.orders,
       liters: loc.liters || 0
     }));
 
-    // User growth over time
-    const userGrowthRaw = await db.all(`
-      SELECT joinedAt as date, COUNT(*) as count
-      FROM users
-      WHERE role = "user"
-      GROUP BY joinedAt
-      ORDER BY joinedAt ASC
-    `);
+    // User growth
+    const userGrowthRaw = await User.aggregate([
+      { $match: { role: "user" } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$joinedAt" } },
+          count: { $sum: 1 }
+      } },
+      { $sort: { _id: 1 } }
+    ]);
 
     let runningTotal = 0;
     const userGrowth = userGrowthRaw.map(row => {
       runningTotal += row.count;
       return {
-        date: new Date(row.date).toLocaleDateString('en', { day: '2-digit', month: 'short' }),
+        date: new Date(row._id).toLocaleDateString('en', { day: '2-digit', month: 'short' }),
         users: runningTotal
       };
     });
 
     if (userGrowth.length === 0) {
       const today = new Date().toLocaleDateString('en', { day: '2-digit', month: 'short' });
-      userGrowth.push(
-        { date: today, users: 0 }
-      );
+      userGrowth.push({ date: today, users: 0 });
     }
 
     res.json({
@@ -747,8 +769,8 @@ app.get('/api/admin/stats', async (req, res) => {
 // Start server after connecting to database
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`OilLoop Express API server running with SQLite database on port ${PORT}`);
+    console.log(`OilLoop Express API server running with MongoDB database on port ${PORT}`);
   });
 }).catch(err => {
-  console.error('Failed to initialize SQLite database', err);
+  console.error('Failed to initialize MongoDB database', err);
 });

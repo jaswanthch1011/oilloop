@@ -110,6 +110,12 @@ const CONTAINER_MOBILENET_KEYWORDS = [
   'soap dispenser',
   'lotion',
   'shampoo',
+  'plastic wrapping',
+  'pillow',
+  'sunscreen',
+  'sachet',
+  'bag',
+  'pouch',
 ];
 
 // MobileNet classes for cooking/food/oil context (secondary signal)
@@ -173,8 +179,8 @@ const MOBILENET_REJECTION_KEYWORDS = [
   'coffee', 'tea', 'espresso', 'mug', 'cup', 'teacup',
   'bread', 'cake', 'cookie', 'biscuit', 'muffin', 'pastry', 'bun',
   'pizza', 'hamburger', 'burger', 'sandwich', 'hotdog',
-  'fruit', 'apple', 'banana', 'orange', 'strawberry', 'grape', 'lemon',
-  'vegetable', 'broccoli', 'carrot', 'potato', 'tomato', 'cucumber',
+  'apple', 'banana', 'orange', 'strawberry', 'grape', 'lemon',
+  'broccoli', 'carrot', 'potato', 'tomato', 'cucumber',
   'meat', 'steak', 'chicken', 'fish', 'egg', 'omelet',
   'ice cream', 'chocolate', 'candy', 'honey', 'syrup', 'juice',
   'oil filter', 'engine', 'machine', 'tool',
@@ -487,9 +493,11 @@ export async function classifyOilImage(
   }
 
   // Rule 3: MUST have either a COCO container OR MobileNet container detection
-  // This is the critical gate — without this, random images pass through
-  if (!hasContainer && !mnetSeesContainer) {
-    details.push(`❌ REJECTED: Neither COCO nor MobileNet detected a container`);
+  // OR very strong oil classification
+  const hasStrongOilSignal = mnetSeesFoodOil && mnetLabels[0].prob > 0.15;
+
+  if (!hasContainer && !mnetSeesContainer && !hasStrongOilSignal) {
+    details.push(`❌ REJECTED: Neither COCO nor MobileNet detected a container, and oil signal is weak`);
     return makeErrorResult(
       `❌ No oil container found!\n\nThe AI could not detect any bottle, packet, jar, or container in this image.\n\nFor a successful scan:\n• Place a cooking oil bottle/packet in clear view\n• Ensure good lighting with no glare\n• The container should fill most of the frame\n• Avoid background clutter`,
       details, allDetectionLabels

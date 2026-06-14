@@ -1,150 +1,145 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, 'database.db');
+dotenv.config();
 
-let db;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/oilloop';
+
+// ── SCHEMAS ──
+
+const UserSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  name: String,
+  email: { type: String, unique: true, sparse: true },
+  phone: { type: String, unique: true, sparse: true },
+  password: { type: String, required: true },
+  avatar: { type: String, default: '🌿' },
+  role: { type: String, default: 'user' },
+  ecoLevel: {
+    level: { type: Number, default: 1 },
+    name: { type: String, default: 'Seedling' },
+    icon: { type: String, default: '🌱' },
+    minPoints: { type: Number, default: 0 }
+  },
+  totalPoints: { type: Number, default: 0 },
+  availablePoints: { type: Number, default: 0 },
+  totalLitersRecycled: { type: Number, default: 0 },
+  badges: [String],
+  referralCode: { type: String, unique: true },
+  referralCount: { type: Number, default: 0 },
+  joinedAt: { type: Date, default: Date.now },
+  streak: { type: Number, default: 0 }
+});
+
+const PickupSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: String,
+  locationId: String,
+  locationName: String,
+  address: String,
+  scheduledDate: String,
+  scheduledTime: String,
+  oilType: String,
+  estimatedVolume: Number,
+  containers: Number,
+  status: { type: String, default: 'pending' },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const ScanSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: String,
+  brand: String,
+  oilType: String,
+  volume: Number,
+  points: Number,
+  scannedAt: { type: Date, default: Date.now }
+});
+
+const RedemptionSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: String,
+  rewardId: String,
+  rewardName: String,
+  pointsSpent: Number,
+  status: { type: String, default: 'completed' },
+  redeemedAt: { type: Date, default: Date.now }
+});
+
+const NotificationSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  userId: String,
+  type: String,
+  title: String,
+  message: String,
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  icon: String
+});
+
+// ── MODELS ──
+
+export const User = mongoose.model('User', UserSchema);
+export const Pickup = mongoose.model('Pickup', PickupSchema);
+export const Scan = mongoose.model('Scan', ScanSchema);
+export const Redemption = mongoose.model('Redemption', RedemptionSchema);
+export const Notification = mongoose.model('Notification', NotificationSchema);
+
+// ── CONNECTION ──
 
 export async function initDb() {
-  db = await open({
-    filename: dbPath,
-    driver: sqlite3.Database
-  });
+  try {
+    await mongoose.connect(MONGODB_URI);
+    console.log('✅ Connected to MongoDB');
 
-  // Create tables
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      email TEXT UNIQUE,
-      phone TEXT UNIQUE,
-      password TEXT,
-      avatar TEXT,
-      role TEXT,
-      ecoLevel TEXT,
-      totalPoints INTEGER,
-      availablePoints INTEGER,
-      totalLitersRecycled REAL,
-      badges TEXT,
-      referralCode TEXT UNIQUE,
-      referralCount INTEGER,
-      joinedAt TEXT,
-      streak INTEGER
-    );
+    // Seed initial data if needed
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log('🌱 Seeding initial data...');
 
-    CREATE TABLE IF NOT EXISTS pickups (
-      id TEXT PRIMARY KEY,
-      userId TEXT,
-      locationId TEXT,
-      locationName TEXT,
-      address TEXT,
-      scheduledDate TEXT,
-      scheduledTime TEXT,
-      oilType TEXT,
-      estimatedVolume REAL,
-      containers INTEGER,
-      status TEXT,
-      createdAt TEXT
-    );
+      await User.create({
+        id: 'admin1',
+        name: 'Admin',
+        email: 'admin@oilloop.in',
+        phone: '+91 99999 88888',
+        password: 'frytofly',
+        avatar: '🛡️',
+        role: 'admin',
+        ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
+        referralCode: 'OILLOOP-ADMIN'
+      });
 
-    CREATE TABLE IF NOT EXISTS scans (
-      id TEXT PRIMARY KEY,
-      userId TEXT,
-      brand TEXT,
-      oilType TEXT,
-      volume REAL,
-      points INTEGER,
-      scannedAt TEXT
-    );
+      await User.create({
+        id: 'u1',
+        name: 'Eco User',
+        email: 'user@oilloop.in',
+        phone: '9876543210',
+        password: 'password',
+        avatar: '🌿',
+        role: 'user',
+        ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
+        referralCode: 'OILLOOP-ECO42'
+      });
 
-    CREATE TABLE IF NOT EXISTS redemptions (
-      id TEXT PRIMARY KEY,
-      userId TEXT,
-      rewardId TEXT,
-      rewardName TEXT,
-      pointsSpent INTEGER,
-      status TEXT,
-      redeemedAt TEXT
-    );
+      await Notification.create({
+        id: 'n1',
+        userId: 'u1',
+        type: 'system',
+        title: 'Welcome to OilLoop! 🌱',
+        message: 'Start your recycling journey by scanning your first oil container.',
+        read: false,
+        icon: '🌱'
+      });
 
-    CREATE TABLE IF NOT EXISTS notifications (
-      id TEXT PRIMARY KEY,
-      userId TEXT,
-      type TEXT,
-      title TEXT,
-      message TEXT,
-      read INTEGER,
-      createdAt TEXT,
-      icon TEXT
-    );
-  `);
-
-  // Check if we need to seed the database
-  const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-  if (userCount.count === 0) {
-    // Seed initial users
-    await db.run(
-      `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        'admin1',
-        'Admin',
-        'admin@oilloop.in',
-        '+91 99999 88888',
-        'frytofly',
-        '🛡️',
-        'admin',
-        JSON.stringify({ level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 }),
-        0,
-        0,
-        0.0,
-        JSON.stringify([]),
-        'OILLOOP-ADMIN',
-        0,
-        '2026-01-01',
-        0
-      ]
-    );
-
-    await db.run(
-      `INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        'u1',
-        'Eco User',
-        'user@oilloop.in',
-        '9876543210',
-        'password',
-        '🌿',
-        'user',
-        JSON.stringify({ level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 }),
-        0,
-        0,
-        0.0,
-        JSON.stringify([]),
-        'OILLOOP-ECO42',
-        0,
-        '2026-01-15',
-        0
-      ]
-    );
-
-    // Seed initial notifications
-    const initialNotifications = [
-      { id: 'n1', userId: 'u1', type: 'system', title: 'Welcome to OilLoop! 🌱', message: 'Start your recycling journey by scanning your first oil container.', read: 0, createdAt: new Date().toISOString(), icon: '🌱' },
-    ];
-
-    for (const n of initialNotifications) {
-      await db.run(
-        `INSERT INTO notifications VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [n.id, n.userId, n.type, n.title, n.message, n.read, n.createdAt, n.icon]
-      );
+      console.log('✅ Seeding complete');
     }
+  } catch (err) {
+    console.error('❌ MongoDB Connection Error:', err);
+    process.exit(1);
   }
 }
 
+// Helper to keep similar API as before (though Mongoose models are used directly now)
 export function getDb() {
-  if (!db) throw new Error('Database not initialized. Call initDb() first.');
-  return db;
+  return mongoose.connection;
 }
