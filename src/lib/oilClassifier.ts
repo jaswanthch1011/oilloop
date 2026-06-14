@@ -87,9 +87,9 @@ export const OIL_SIGNATURES: OilSignature[] = [
     colorProfile: { hueMin: 55, hueMax: 95, satMin: 40, satMax: 85, lightMin: 30, lightMax: 60 }, weight: 10 },
 ];
 
-// ── STRICT: Only MobileNet classes that specifically indicate a BOTTLE ──
+// ── STRICT: Only MobileNet classes that specifically indicate a CONTAINER ──
 // These are the actual ImageNet class names that MobileNet v2 can return
-const BOTTLE_MOBILENET_KEYWORDS = [
+const CONTAINER_MOBILENET_KEYWORDS = [
   'water bottle',
   'bottle',
   'whiskey jug',
@@ -101,6 +101,15 @@ const BOTTLE_MOBILENET_KEYWORDS = [
   'plastic bottle',
   'milk can',
   'canteen',
+  'packet',
+  'pouch',
+  'sachet',
+  'bag',
+  'plastic bag',
+  'envelope', // Packets are often classified as envelopes or bags
+  'soap dispenser',
+  'lotion',
+  'shampoo',
 ];
 
 // MobileNet classes for cooking/food/oil context (secondary signal)
@@ -112,6 +121,11 @@ const FOOD_OIL_KEYWORDS = [
   'corn oil',
   'sunflower',
   'safflower',
+  'refined',
+  'soybean',
+  'palm oil',
+  'coconut oil',
+  'mustard oil',
   'frying pan',
   'wok',
   'spatula',
@@ -149,7 +163,7 @@ const MOBILENET_REJECTION_KEYWORDS = [
   'tree', 'flower', 'mushroom', 'grass', 'mountain', 'cliff', 'valley',
   'beach', 'ocean', 'lake', 'river', 'waterfall',
   'clock', 'watch', 'compass',
-  'book', 'newspaper', 'envelope',
+  'book', 'newspaper',
   'piano', 'guitar', 'drum', 'violin',
   'chair', 'couch', 'sofa', 'bed', 'desk', 'table',
   'toilet', 'bathtub', 'shower',
@@ -404,14 +418,14 @@ export async function classifyOilImage(
   mnetLabels.forEach(l => details.push(`  → ${l.label} (${(l.prob * 100).toFixed(1)}%)`));
 
   // ═══════════════════════════════════════════════════
-  // ── GATE 1: Check if MobileNet sees a bottle/jar ──
+  // ── GATE 1: Check if MobileNet sees a container ──
   // ═══════════════════════════════════════════════════
-  let mnetSeesBottle = false;
-  let mnetBottleConfidence = 0;
+  let mnetSeesContainer = false;
+  let mnetContainerConfidence = 0;
   for (const pred of mnetLabels) {
-    if (labelContainsAny(pred.label, BOTTLE_MOBILENET_KEYWORDS)) {
-      mnetSeesBottle = true;
-      mnetBottleConfidence = Math.max(mnetBottleConfidence, pred.prob);
+    if (labelContainsAny(pred.label, CONTAINER_MOBILENET_KEYWORDS)) {
+      mnetSeesContainer = true;
+      mnetContainerConfidence = Math.max(mnetContainerConfidence, pred.prob);
     }
   }
 
@@ -441,7 +455,7 @@ export async function classifyOilImage(
   details.push(`──── Validation Gates ────`);
   details.push(`COCO container detected: ${hasContainer} (${containerDetections.length} found)`);
   details.push(`COCO rejection detected: ${hasCocoRejection} (${cocoRejections.map(r => r.label).join(', ')})`);
-  details.push(`MobileNet sees bottle: ${mnetSeesBottle} (conf: ${(mnetBottleConfidence * 100).toFixed(1)}%)`);
+  details.push(`MobileNet sees container: ${mnetSeesContainer} (conf: ${(mnetContainerConfidence * 100).toFixed(1)}%)`);
   details.push(`MobileNet sees food/oil: ${mnetSeesFoodOil}`);
   details.push(`MobileNet sees rejection: ${mnetSeesRejection} (${mnetRejectionLabel} @ ${(mnetRejectionProb * 100).toFixed(1)}%)`);
 
@@ -463,30 +477,30 @@ export async function classifyOilImage(
     );
   }
 
-  // Rule 2: If MobileNet's top predictions are rejection classes and no bottle is seen → REJECT
-  if (mnetSeesRejection && !mnetSeesBottle && !hasContainer) {
-    details.push(`❌ REJECTED: MobileNet top prediction is non-oil and no bottle detected`);
+  // Rule 2: If MobileNet's top predictions are rejection classes and no container is seen → REJECT
+  if (mnetSeesRejection && !mnetSeesContainer && !hasContainer) {
+    details.push(`❌ REJECTED: MobileNet top prediction is non-oil and no container detected`);
     return makeErrorResult(
       `❌ No cooking oil detected!\n\nThe AI classified this image as: "${mnetRejectionLabel}"\n\nThis does not appear to be a cooking oil container. Please upload or scan a clear photo of an oil bottle or packet.`,
       details, allDetectionLabels
     );
   }
 
-  // Rule 3: MUST have either a COCO container OR MobileNet bottle detection
+  // Rule 3: MUST have either a COCO container OR MobileNet container detection
   // This is the critical gate — without this, random images pass through
-  if (!hasContainer && !mnetSeesBottle) {
-    details.push(`❌ REJECTED: Neither COCO nor MobileNet detected a bottle/container`);
+  if (!hasContainer && !mnetSeesContainer) {
+    details.push(`❌ REJECTED: Neither COCO nor MobileNet detected a container`);
     return makeErrorResult(
       `❌ No oil container found!\n\nThe AI could not detect any bottle, packet, jar, or container in this image.\n\nFor a successful scan:\n• Place a cooking oil bottle/packet in clear view\n• Ensure good lighting with no glare\n• The container should fill most of the frame\n• Avoid background clutter`,
       details, allDetectionLabels
     );
   }
 
-  // Rule 4: If MobileNet sees rejection AND it's stronger than bottle detection → REJECT
-  if (mnetSeesRejection && mnetRejectionProb > mnetBottleConfidence && !hasContainer) {
-    details.push(`❌ REJECTED: Rejection signal stronger than bottle signal`);
+  // Rule 4: If MobileNet sees rejection AND it's stronger than container detection → REJECT
+  if (mnetSeesRejection && mnetRejectionProb > mnetContainerConfidence && !hasContainer) {
+    details.push(`❌ REJECTED: Rejection signal stronger than container signal`);
     return makeErrorResult(
-      `❌ This doesn't look like cooking oil.\n\nThe AI sees "${mnetRejectionLabel}" more strongly than any oil container. Please scan a clear image of a cooking oil bottle.`,
+      `❌ This doesn't look like cooking oil.\n\nThe AI sees "${mnetRejectionLabel}" more strongly than any oil container. Please scan a clear image of a cooking oil bottle or packet.`,
       details, allDetectionLabels
     );
   }
@@ -531,14 +545,11 @@ export async function classifyOilImage(
     // Base weight (up to 10 points)
     matchScore += sig.weight;
 
-    // Container detection bonus (strong signal)
-    if (hasContainer) matchScore += 15;
-
-    // MobileNet bottle bonus
-    if (mnetSeesBottle) matchScore += 10;
+    // Container match bonus
+    if (hasContainer || mnetSeesContainer) matchScore += 25;
 
     // Food/oil context bonus
-    if (mnetSeesFoodOil) matchScore += 10;
+    if (mnetSeesFoodOil) matchScore += 15;
 
     scores.push({ sig, score: matchScore, cScore });
   }
@@ -556,7 +567,7 @@ export async function classifyOilImage(
   if (bestMatch.score < MIN_OIL_MATCH_SCORE) {
     details.push(`❌ REJECTED: Low match score (${bestMatch.score.toFixed(1)})`);
     return makeErrorResult(
-      `❌ Could not verify as Cooking Oil.\n\nWhile the AI saw a container, the contents do not match any known cooking oil profiles. It might be water, soda, or a different liquid.\n\nTips:\n• Ensure the oil color is visible\n• Avoid scanning empty bottles\n• Remove large labels if they cover the oil`,
+      `❌ Could not verify as Cooking Oil.\n\nWhile the AI saw a container or packet, the contents do not match any known cooking oil profiles. It might be water, juice, or a different liquid.\n\nTips:\n• Ensure the oil color/label is visible\n• Avoid scanning empty packets\n• Try a different angle with less glare`,
       details, allDetectionLabels
     );
   }

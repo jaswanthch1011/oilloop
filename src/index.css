@@ -59,6 +59,17 @@
     min-height: 100vh;
     overflow-x: hidden;
     transition: background-color 0.3s ease, color 0.3s ease;
+    /* Optimize for mobile smoothness */
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+
+  /* Force GPU acceleration for smooth animations */
+  .animate-slide-up, .animate-scale-in, .animate-fade-in, .animate-scan-line {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    transform: translateZ(0);
   }
 
   h1, h2, h3, h4, h5, h6 {
