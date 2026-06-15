@@ -12,25 +12,18 @@ export const CO2_PER_LITER = 2.5;       // kg CO₂ saved per liter UCO
 export const BIODIESEL_PER_LITER = 0.85; // liters biodiesel per liter UCO
 export const BASE_POINTS_PER_LITER = 50;
 
+export const OIL_GRADES = {
+  GRADE_1: { points: 150, types: ['Canola Oil', 'Sunflower Oil', 'Canola-dominant Generic Vegetable Oil'] },
+  GRADE_2: { points: 125, types: ['Soybean Oil', 'Soy-dominant Generic Vegetable Oil', 'Refined Rice Bran Oil'] },
+  GRADE_3: { points: 100, types: ['Palm Oil', 'Coconut Oil'] },
+  GRADE_4: { points: 75, types: ['Crude Rice Bran Oil', 'Animal Fats (Tallow, Lard)', 'Heavily Degraded Restaurant Grease'] },
+} as const;
+
 export const OIL_TYPES = [
-  // Grade 1 (150 pts/L)
-  'Canola Oil',
-  'Sunflower Oil',
-  'Canola-dominant Generic Vegetable Oil',
-  
-  // Grade 2 (125 pts/L)
-  'Soybean Oil',
-  'Soy-dominant Generic Vegetable Oil',
-  'Refined Rice Bran Oil',
-  
-  // Grade 3 (100 pts/L)
-  'Palm Oil',
-  'Coconut Oil',
-  
-  // Grade 4 (75 pts/L)
-  'Crude Rice Bran Oil',
-  'Animal Fats (Tallow, Lard)',
-  'Heavily Degraded Restaurant Grease',
+  ...OIL_GRADES.GRADE_1.types,
+  ...OIL_GRADES.GRADE_2.types,
+  ...OIL_GRADES.GRADE_3.types,
+  ...OIL_GRADES.GRADE_4.types,
 ];
 
 export const OIL_BRANDS = [

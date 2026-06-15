@@ -89,53 +89,62 @@ export const Notification = mongoose.model('Notification', NotificationSchema);
 
 export async function initDb() {
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('✅ Connected to MongoDB');
+    console.log(`🔌 Attempting to connect to MongoDB at: ${MONGODB_URI.split('@').pop()}`);
+    await mongoose.connect(MONGODB_URI, {
+      dbName: 'frytofly',
+      serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+    });
+    console.log('✅ Connected to MongoDB successfully');
 
     // Seed initial data if needed
     const userCount = await User.countDocuments();
     if (userCount === 0) {
-      console.log('🌱 Seeding initial data...');
+      console.log('🌱 No users found. Seeding initial data...');
 
-      await User.create({
-        id: 'admin1',
-        name: 'Admin',
-        email: 'admin@oilloop.in',
-        phone: '+91 99999 88888',
-        password: 'frytofly',
-        avatar: '🛡️',
-        role: 'admin',
-        ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
-        referralCode: 'OILLOOP-ADMIN'
-      });
+      try {
+        await User.create({
+          id: 'admin1',
+          name: 'Admin',
+          email: 'admin@frytofly.in',
+          phone: '+91 99999 88888',
+          password: 'frytofly',
+          avatar: '🛡️',
+          role: 'admin',
+          ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
+          referralCode: 'FRYTOFLY-ADMIN'
+        });
 
-      await User.create({
-        id: 'u1',
-        name: 'Eco User',
-        email: 'user@oilloop.in',
-        phone: '9876543210',
-        password: 'password',
-        avatar: '🌿',
-        role: 'user',
-        ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
-        referralCode: 'OILLOOP-ECO42'
-      });
+        await User.create({
+          id: 'u1',
+          name: 'Eco User',
+          email: 'user@frytofly.in',
+          phone: '9876543210',
+          password: 'password',
+          avatar: '🌿',
+          role: 'user',
+          ecoLevel: { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
+          referralCode: 'FRYTOFLY-ECO42'
+        });
 
-      await Notification.create({
-        id: 'n1',
-        userId: 'u1',
-        type: 'system',
-        title: 'Welcome to OilLoop! 🌱',
-        message: 'Start your recycling journey by scanning your first oil container.',
-        read: false,
-        icon: '🌱'
-      });
+        await Notification.create({
+          id: 'n1',
+          userId: 'u1',
+          type: 'system',
+          title: 'Welcome to FrytoFly! 🌱',
+          message: 'Start your recycling journey by scanning your first oil container.',
+          read: false,
+          icon: '🌱'
+        });
 
-      console.log('✅ Seeding complete');
+        console.log('✅ Seeding complete');
+      } catch (seedErr) {
+        console.error('⚠️ Seeding failed:', seedErr.message);
+      }
     }
   } catch (err) {
-    console.error('❌ MongoDB Connection Error:', err);
-    process.exit(1);
+    console.error('❌ MongoDB Connection Error:', err.message);
+    console.error('💡 Make sure MongoDB is installed and running on your system.');
+    console.error('💡 If using MongoDB Atlas, check your connection string and IP whitelist.');
   }
 }
 

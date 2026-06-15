@@ -6,7 +6,7 @@ const slides = [
   {
     emoji: '♻️',
     title: 'Turn Waste Oil\nInto Rewards',
-    description: 'OilLoop transforms your used cooking oil into tracked, rewarded, and biodiesel-bound resources.',
+    description: 'FrytoFly transforms your used cooking oil into tracked, rewarded, and biodiesel-bound resources.',
     gradient: 'from-green-400 to-emerald-600',
     bg: 'radial-gradient(circle at 30% 20%, rgba(34, 197, 94, 0.15) 0%, transparent 60%)',
   },

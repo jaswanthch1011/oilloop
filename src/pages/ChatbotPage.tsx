@@ -31,7 +31,7 @@ const knowledgeBase: Record<string, string[]> = {
 
 const responses: Record<string, string[]> = {
   greeting: [
-    "Hello! 🌿 Welcome to OilLoop! I'm your eco-assistant. How can I help you today?",
+    "Hello! 🌿 Welcome to FrytoFly! I'm your eco-assistant. How can I help you today?",
     "Hey there! ♻️ I'm here to help you with anything about recycling cooking oil. What would you like to know?",
     "Hi! 🌱 Great to see you! Ask me anything about pickups, scanning, rewards, or your eco impact!",
   ],
@@ -61,7 +61,7 @@ const responses: Record<string, string[]> = {
     "👤 **Account Management:**\n\n• **Edit profile:** Profile tab → tap any field to edit\n• **Change avatar:** Tap your avatar → choose from eco icons\n• **Theme:** Toggle dark/light mode in Settings\n• **Notifications:** Customize in Profile → Settings\n• **Delete account:** Profile → Settings → Delete Account\n\nYour data is encrypted and never shared with third parties. 🔒",
   ],
   help: [
-    "📞 **Need More Help?**\n\nI'm here to assist! Here are your support options:\n\n• **This chatbot** — Ask me anything!\n• **FAQ section** — Detailed answers to common questions\n• **Email:** support@oilloop.in\n• **Phone:** +91 1800-OIL-LOOP\n• **Response time:** Within 24 hours\n\nWhat specific issue are you facing? I'll try my best to help! 🌿",
+    "📞 **Need More Help?**\n\nI'm here to assist! Here are your support options:\n\n• **This chatbot** — Ask me anything!\n• **FAQ section** — Detailed answers to common questions\n• **Email:** support@frytofly.in\n• **Phone:** +91 1800-FRY-TO-FLY\n• **Response time:** Within 24 hours\n\nWhat specific issue are you facing? I'll try my best to help! 🌿",
   ],
   oil: [
     "🫙 **About Used Cooking Oil:**\n\n**Accepted types:**\nSunflower, Mustard, Coconut, Groundnut, Soybean, Palm, Olive, Rice Bran, Sesame, Canola\n\n**Tips for collection:**\n• Let oil cool completely before storing\n• Use any clean, sealed container\n• Don't mix with water or food waste\n• Strain out food particles if possible\n\n**Minimum quantity:** 0.5 liters\n**No maximum limit!** The more you recycle, the bigger your impact! 🌍",
@@ -124,7 +124,7 @@ export default function ChatbotPage() {
     {
       id: 'welcome',
       role: 'bot',
-      content: `Hello${user ? ` ${user.name}` : ''}! 🌿 I'm **LoopBot**, your OilLoop eco-assistant.\n\nI can help you with:\n• Scheduling pickups & tracking orders\n• Understanding the AI scan feature\n• Points, rewards & badges system\n• Environmental impact info\n• Account & profile settings\n\nAsk me anything or tap a quick action below! ♻️`,
+      content: `Hello${user ? ` ${user.name}` : ''}! 🌿 I'm **FlyBot**, your FrytoFly eco-assistant.\n\nI can help you with:\n• Scheduling pickups & tracking orders\n• Understanding the AI scan feature\n• Points, rewards & badges system\n• Environmental impact info\n• Account & profile settings\n\nAsk me anything or tap a quick action below! ♻️`,
       timestamp: new Date(),
     },
   ]);
@@ -243,7 +243,7 @@ export default function ChatbotPage() {
         </div>
         <div className="flex-1">
           <h1 className="text-base font-bold font-display" style={{ color: 'var(--text-primary)' }}>
-            LoopBot
+            FlyBot
           </h1>
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -390,7 +390,7 @@ export default function ChatbotPage() {
             value={input}
             onChange={e => setInput(e.target.value)}
             className="input-base flex-1 py-2.5"
-            placeholder="Ask me anything about OilLoop..."
+            placeholder="Ask me anything about FrytoFly..."
             disabled={isTyping}
           />
           <button
@@ -413,7 +413,7 @@ export default function ChatbotPage() {
           </button>
         </form>
         <p className="text-[10px] text-center mt-2" style={{ color: 'var(--text-muted)' }}>
-          LoopBot provides AI-assisted answers. For urgent issues, contact support.
+          FlyBot provides AI-assisted answers. For urgent issues, contact support.
         </p>
       </div>
     </div>

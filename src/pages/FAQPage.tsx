@@ -23,20 +23,20 @@ const faqData: FAQCategory[] = [
     color: '#22c55e',
     items: [
       {
-        question: 'What is OilLoop?',
-        answer: 'OilLoop is an eco-friendly platform that helps you recycle used cooking oil (UCO). We collect your used oil, convert it into biodiesel, and reward you with points for every liter you contribute. It\'s a win for you and a win for the planet!'
+        question: 'What is FrytoFly?',
+        answer: 'FrytoFly is an eco-friendly platform that helps you recycle used cooking oil (UCO). We collect your used oil, convert it into biodiesel, and reward you with points for every liter you contribute. It\'s a win for you and a win for the planet!'
       },
       {
         question: 'Why should I recycle cooking oil?',
         answer: 'Used cooking oil dumped in drains causes water pollution, blocks sewage systems, and harms aquatic life. When recycled into biodiesel, each liter of UCO saves approximately 2.5 kg of CO₂ emissions and produces 0.85 liters of clean biodiesel fuel.'
       },
       {
-        question: 'Is OilLoop free to use?',
-        answer: 'Absolutely! OilLoop is completely free for all users. Not only do we pick up your used oil at no charge, we actually reward you with points that can be redeemed for real products!'
+        question: 'Is FrytoFly free to use?',
+        answer: 'Absolutely! FrytoFly is completely free for all users. Not only do we pick up your used oil at no charge, we actually reward you with points that can be redeemed for real products!'
       },
       {
-        question: 'Which cities is OilLoop available in?',
-        answer: 'Currently, OilLoop operates in Hyderabad with collection points across Jubilee Hills, Banjara Hills, Madhapur, Gachibowli, and Kondapur. We\'re expanding to Bangalore, Chennai, and Mumbai soon!'
+        question: 'Which cities is FrytoFly available in?',
+        answer: 'Currently, FrytoFly operates in Hyderabad with collection points across Jubilee Hills, Banjara Hills, Madhapur, Gachibowli, and Kondapur. We\'re expanding to Bangalore, Chennai, and Mumbai soon!'
       },
     ]
   },

@@ -1,9 +1,10 @@
 const getApiBase = () => {
+  // 1. Check for explicit environment variable (Vite)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Check if running inside native Capacitor environment
+  // 2. Check if running inside native Capacitor environment
   const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
   if (isCapacitor) {
     // 192.168.0.100 points to your machine's local IP
@@ -11,8 +12,14 @@ const getApiBase = () => {
     return 'http://192.168.0.100:5000';
   }
 
-  // In development web, use relative path (proxied by Vite)
-  return '';
+  // 3. In development web, use relative path (proxied by Vite)
+  // This helps avoid CORS issues in local browser testing
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return '';
+  }
+
+  // 4. Fallback to local IP for other cases
+  return 'http://192.168.0.100:5000';
 };
 
 export const API_BASE = getApiBase();

@@ -23,23 +23,71 @@ app.use(cors({
 
 app.use(express.json());
 
-// Helper to generate IDs
+// ── CONSTANTS ──
+
+const ECO_LEVELS = [
+  { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0, maxPoints: 100 },
+  { level: 2, name: 'Sprout', icon: '🌿', minPoints: 101, maxPoints: 500 },
+  { level: 3, name: 'Tree', icon: '🌳', minPoints: 501, maxPoints: 2000 },
+  { level: 4, name: 'Forest', icon: '🏔️', minPoints: 2001, maxPoints: 5000 },
+  { level: 5, name: 'Planet Saver', icon: '🌍', minPoints: 5001, maxPoints: 99999 }
+];
+
+const MASTER_BADGES = [
+  { id: 'b1', name: 'First Drop', description: 'Complete your first oil scan', icon: '💧', requirement: 'Scan 1 oil packet' },
+  { id: 'b2', name: 'Weekly Warrior', description: 'Maintain a 7-day recycling streak', icon: '⚔️', requirement: '7-day streak' },
+  { id: 'b3', name: 'Liter Legend', description: 'Recycle 10 liters of cooking oil', icon: '🏆', requirement: '10L recycled' },
+  { id: 'b4', name: 'Community Champion', description: 'Refer 5 friends to OilLoop', icon: '👑', requirement: '5 referrals' },
+  { id: 'b5', name: 'Century Club', description: 'Complete 100 oil scans', icon: '💯', requirement: '100 scans' },
+  { id: 'b6', name: 'Eco Ambassador', description: 'Share your impact on social media', icon: '🌟', requirement: 'Share on social' },
+  { id: 'b7', name: 'Green Streak', description: 'Maintain a 30-day recycling streak', icon: '🔥', requirement: '30-day streak' },
+  { id: 'b8', name: 'Half-Ton Hero', description: 'Save 500 kg of CO₂', icon: '🦸', requirement: '500 kg CO₂ saved' },
+];
+
+const OIL_GRADES = {
+  GRADE_1: { points: 150, types: ['Canola Oil', 'Sunflower Oil', 'Canola-dominant Generic Vegetable Oil'] },
+  GRADE_2: { points: 125, types: ['Soybean Oil', 'Soy-dominant Generic Vegetable Oil', 'Refined Rice Bran Oil'] },
+  GRADE_3: { points: 100, types: ['Palm Oil', 'Coconut Oil'] },
+  GRADE_4: { points: 75, types: ['Crude Rice Bran Oil', 'Animal Fats (Tallow, Lard)', 'Heavily Degraded Restaurant Grease'] },
+};
+
+// ── HELPERS ──
+
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-// Eco Levels constants matching the frontend
-const ECO_LEVELS = [
-  { level: 1, name: 'Seedling', icon: '🌱', minPoints: 0 },
-  { level: 2, name: 'Sprout', icon: '🌿', minPoints: 101 },
-  { level: 3, name: 'Tree', icon: '🌳', minPoints: 501 },
-  { level: 4, name: 'Forest', icon: '🏔️', minPoints: 2001 },
-  { level: 5, name: 'Planet Saver', icon: '🌍', minPoints: 5001 }
-];
+const getPointsPerLiter = (oilType) => {
+  if (OIL_GRADES.GRADE_1.types.includes(oilType)) return OIL_GRADES.GRADE_1.points;
+  if (OIL_GRADES.GRADE_2.types.includes(oilType)) return OIL_GRADES.GRADE_2.points;
+  if (OIL_GRADES.GRADE_3.types.includes(oilType)) return OIL_GRADES.GRADE_3.points;
+  if (OIL_GRADES.GRADE_4.types.includes(oilType)) return OIL_GRADES.GRADE_4.points;
+  return 100;
+};
 
 const updateEcoLevel = (points) => {
   for (let i = ECO_LEVELS.length - 1; i >= 0; i--) {
     if (points >= ECO_LEVELS[i].minPoints) return ECO_LEVELS[i];
   }
   return ECO_LEVELS[0];
+};
+
+const mapUserResponse = (userDoc) => {
+  const user = userDoc.toObject();
+  delete user.password;
+  delete user.__v;
+  delete user._id;
+
+  // Map badge IDs to full objects
+  user.badges = (user.badges || []).map(badgeId => {
+    const master = MASTER_BADGES.find(b => b.id === badgeId);
+    if (!master) return { id: badgeId, name: 'Unknown', icon: '❔', locked: false };
+    return {
+      ...master,
+      locked: false,
+      unlockedAt: user.joinedAt instanceof Date ? user.joinedAt.toISOString() : new Date().toISOString()
+    };
+  });
+
+  return user;
 };
 
 // ─── AUTH ENDPOINTS ───
@@ -73,10 +121,7 @@ app.post('/api/auth/signup', async (req, res) => {
       joinedAt: new Date()
     });
 
-    const userObj = user.toObject();
-    delete userObj.password;
-
-    res.status(201).json({ user: userObj });
+    res.status(201).json({ user: mapUserResponse(user) });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -98,10 +143,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const userObj = user.toObject();
-    delete userObj.password;
-
-    res.json({ user: userObj });
+    res.json({ user: mapUserResponse(user) });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -136,10 +178,7 @@ app.post('/api/auth/login-otp', async (req, res) => {
       });
     }
 
-    const userObj = user.toObject();
-    delete userObj.password;
-
-    res.json({ user: userObj });
+    res.json({ user: mapUserResponse(user) });
   } catch (err) {
     console.error('OTP login error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -164,10 +203,7 @@ app.put('/api/user/profile', async (req, res) => {
 
     await user.save();
 
-    const updatedUser = user.toObject();
-    delete updatedUser.password;
-
-    res.json({ user: updatedUser });
+    res.json({ user: mapUserResponse(user) });
   } catch (err) {
     console.error('Profile update error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -284,8 +320,8 @@ app.put('/api/pickups/:id/status', async (req, res) => {
     if (status === 'completed') {
       const user = await User.findOne({ id: pickup.userId });
       if (user) {
-        const basePoints = Math.round(pickup.estimatedVolume * 50);
-        const pointsAwarded = Math.round(basePoints * 1.2);
+        const basePoints = getPointsPerLiter(pickup.oilType);
+        const pointsAwarded = Math.round(basePoints * pickup.estimatedVolume * 1.2); // 1.2x multiplier for confirmed pickups
         
         user.totalPoints += pointsAwarded;
         user.availablePoints += pointsAwarded;
@@ -424,8 +460,7 @@ app.post('/api/scans', async (req, res) => {
         icon: '📷'
       });
 
-      updatedUser = user.toObject();
-      delete updatedUser.password;
+      updatedUser = mapUserResponse(user);
     }
     res.status(201).json({ scan: newScan, user: updatedUser });
   } catch (err) {
@@ -485,10 +520,7 @@ app.post('/api/redemptions', async (req, res) => {
       icon: '🎁'
     });
 
-    const updatedUser = user.toObject();
-    delete updatedUser.password;
-
-    res.status(201).json({ redemption: newRedemption, user: updatedUser });
+    res.status(201).json({ redemption: newRedemption, user: mapUserResponse(user) });
   } catch (err) {
     console.error('Redeem error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -769,7 +801,7 @@ app.get('/api/admin/stats', async (req, res) => {
 // Start server after connecting to database
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`OilLoop Express API server running with MongoDB database on port ${PORT}`);
+    console.log(`FrytoFly Express API server running with MongoDB database on port ${PORT}`);
   });
 }).catch(err => {
   console.error('Failed to initialize MongoDB database', err);

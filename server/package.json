@@ -1,7 +1,7 @@
 {
-  "name": "oilloop-server",
+  "name": "frytofly-server",
   "version": "1.0.0",
-  "description": "Backend API server for OilLoop cooking oil recycling app",
+  "description": "Backend API server for FrytoFly cooking oil recycling app",
   "main": "index.js",
   "type": "module",
   "scripts": {

@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'in.oilloop.app',
-  appName: 'OilLoop',
+  appId: 'in.frytofly.app',
+  appName: 'FrytoFly',
   webDir: 'dist',
   server: {
     androidScheme: 'https'

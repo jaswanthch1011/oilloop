@@ -46,9 +46,9 @@ export default function TopBar({ title, showBack = false, showNotifications = tr
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
               style={{ background: 'var(--bg-card)' }}>
-              <img src="/logo.png" alt="OilLoop Logo" className="w-full h-full object-cover" />
+              <img src="/logo.png" alt="FrytoFly Logo" className="w-full h-full object-cover" />
             </div>
-            <span className="text-xl font-bold font-display gradient-text">OilLoop</span>
+            <span className="text-xl font-bold font-display gradient-text">FrytoFly</span>
           </div>
         )}
       </div>

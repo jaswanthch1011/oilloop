@@ -18,7 +18,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const loginEmail = role === 'admin' ? 'admin@oilloop.in' : email;
+      const loginEmail = role === 'admin' ? 'admin@frytofly.in' : email;
       const ok = await login(loginEmail, password, role);
       if (ok) navigate(role === 'admin' ? '/admin' : '/dashboard');
       else setError('Invalid credentials');
@@ -40,10 +40,10 @@ export default function LoginPage() {
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg"
             style={{ background: 'var(--bg-card)' }}>
-            <img src="/logo.png" alt="OilLoop Logo" className="w-full h-full object-cover" />
+            <img src="/logo.png" alt="FrytoFly Logo" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-display gradient-text">OilLoop</h1>
+            <h1 className="text-2xl font-bold font-display gradient-text">FrytoFly</h1>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Recycle · Reward · Repeat</p>
           </div>
         </div>
@@ -120,10 +120,10 @@ export default function LoginPage() {
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
               <input
                 type="email"
-                value={role === 'admin' ? 'admin@oilloop.in' : email}
+                value={role === 'admin' ? 'admin@frytofly.in' : email}
                 onChange={e => setEmail(e.target.value)}
                 className="input-base"
-                placeholder={role === 'admin' ? 'admin@oilloop.in' : 'you@example.com'}
+                placeholder={role === 'admin' ? 'admin@frytofly.in' : 'you@example.com'}
                 required
                 readOnly={role === 'admin'}
                 style={role === 'admin' ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
