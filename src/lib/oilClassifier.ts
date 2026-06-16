@@ -204,16 +204,33 @@ export interface ModelBundle {
   mobileNetModel: mobilenet.MobileNet;
 }
 
+let cachedModels: ModelBundle | null = null;
+let loadingPromise: Promise<ModelBundle> | null = null;
+
 /**
- * Load both models
+ * Load both models (Singleton pattern)
  */
 export async function loadModels(): Promise<ModelBundle> {
-  await tf.ready();
-  const [cocoModel, mobileNetModel] = await Promise.all([
-    cocoSsd.load({ base: 'lite_mobilenet_v2' }),
-    mobilenet.load({ version: 2, alpha: 1.0 }),
-  ]);
-  return { cocoModel, mobileNetModel };
+  if (cachedModels) return cachedModels;
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = (async () => {
+    await tf.ready();
+    // Set backend to webgl for better performance if available
+    if (tf.getBackend() !== 'webgl') {
+      try { await tf.setBackend('webgl'); } catch (e) { console.warn('WebGL not available, using cpu'); }
+    }
+
+    const [cocoModel, mobileNetModel] = await Promise.all([
+      cocoSsd.load({ base: 'lite_mobilenet_v2' }),
+      mobilenet.load({ version: 2, alpha: 1.0 }),
+    ]);
+
+    cachedModels = { cocoModel, mobileNetModel };
+    return cachedModels;
+  })();
+
+  return loadingPromise;
 }
 
 /**

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, CalendarDays, ScanLine, Gift, User } from 'lucide-react';
 
@@ -10,11 +10,11 @@ const navItems = [
   { to: '/profile', icon: User, label: 'Profile' },
 ];
 
-export default function BottomNav() {
+const BottomNav = memo(() => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-color)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e2b1c] border-t border-zinc-100 dark:border-zinc-800">
       <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-1">
         {navItems.map(({ to, icon: Icon, label }) => {
           const isActive = location.pathname === to || (to === '/dashboard' && location.pathname === '/');
@@ -28,29 +28,21 @@ export default function BottomNav() {
             >
               {isScan ? (
                 <div
-                  className="flex items-center justify-center w-12 h-12 -mt-6 rounded-2xl shadow-lg transition-all duration-300"
-                  style={{
-                    background: isActive
-                      ? 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))'
-                      : 'var(--bg-secondary)',
-                    boxShadow: isActive ? '0 4px 20px var(--glow-color)' : 'none',
-                  }}
+                  className={`flex items-center justify-center w-12 h-12 -mt-6 rounded-2xl shadow-lg transition-all duration-300 ${isActive ? 'bg-green-500 shadow-green-500/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}
                 >
                   <Icon size={22} color={isActive ? '#fff' : 'var(--text-muted)'} />
                 </div>
               ) : (
                 <div className="relative">
-                  {isActive && <span className="nav-indicator" />}
                   <Icon
                     size={22}
-                    style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)' }}
+                    className={isActive ? 'text-green-500' : 'text-zinc-400'}
                     strokeWidth={isActive ? 2.5 : 1.8}
                   />
                 </div>
               )}
               <span
-                className="text-[10px] font-medium transition-colors"
-                style={{ color: isActive ? 'var(--brand-primary)' : 'var(--text-muted)' }}
+                className={`text-[10px] font-bold transition-colors ${isActive ? 'text-green-500' : 'text-zinc-400'}`}
               >
                 {label}
               </span>
@@ -58,8 +50,9 @@ export default function BottomNav() {
           );
         })}
       </div>
-      {/* Safe area padding for iPhone notch */}
-      <div className="h-[env(safe-area-inset-bottom)]" style={{ background: 'var(--bg-card)' }} />
+      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
-}
+});
+
+export default BottomNav;

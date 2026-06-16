@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Fallback Mock Login
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 200));
     if (role === 'admin' || email === 'admin@oilloop.in') {
       const adminUser = { ...DEFAULT_USER, id: 'admin1', email: email || 'admin@oilloop.in', role: 'admin' as const, name: 'Admin', avatar: '🛡️' };
       setUser(adminUser);
