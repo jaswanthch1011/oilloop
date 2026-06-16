@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, ScanLine, Zap, CheckCircle2, AlertCircle, Edit3, Loader2, Upload, XCircle, Info, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Camera, ScanLine, Zap, CheckCircle2, AlertCircle, Edit3, Loader2, Upload, XCircle, Info, Eye, ArrowRight } from 'lucide-react';
 import TopBar from '../components/layout/TopBar';
 import { useAuth } from '../context/AuthContext';
 import { OIL_BRANDS, OIL_TYPES, OIL_GRADES } from '../lib/constants';
@@ -25,6 +26,7 @@ interface DetectionResult {
 }
 
 export default function ScanPage() {
+  const navigate = useNavigate();
   const [state, setState] = useState<ScanState>('idle');
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -228,9 +230,7 @@ export default function ScanPage() {
       classificationDetails: mlDebugDetails,
     };
 
-    // Award points and save result
-    addPoints(points);
-    addLiters(manualVolume);
+    // Save scan as pending - DO NOT award points yet
     addScanResult({
       brand: detection.brand,
       oilType: detection.oilType,
@@ -238,12 +238,13 @@ export default function ScanPage() {
       confidence: mlConfidence,
       pointsAwarded: points,
     });
+
     addNotification({
-      type: 'reward_alert',
-      title: `+${points} Points! 🎉`,
-      message: `Earned from scanning ${detection.brand} ${detection.oilType} (${detection.volume}L)`,
+      type: 'system',
+      title: 'Scan Submitted',
+      message: `Scanned ${detection.brand} (${detection.volume}L). Pending validation.`,
       read: false,
-      icon: '⭐',
+      icon: '⏳',
     });
 
     setResult(detection);
@@ -368,8 +369,7 @@ export default function ScanPage() {
       mlDetections: ['Manual Entry'],
     };
 
-    addPoints(points);
-    addLiters(manualVolume);
+    // Save as pending
     addScanResult({
       brand: detection.brand,
       oilType: detection.oilType,
@@ -850,12 +850,20 @@ export default function ScanPage() {
               </div>
             </div>
 
-            <h2 className="text-xl font-bold font-display text-center mb-6" style={{ color: 'var(--text-primary)' }}>
-              Oil Identified! 🎉
+            <h2 className="text-xl font-bold font-display text-center mb-1" style={{ color: 'var(--text-primary)' }}>
+              Oil Logged! ⏳
             </h2>
+            <p className="text-xs text-center mb-6" style={{ color: 'var(--text-muted)' }}>
+              Scan is pending admin approval.
+            </p>
 
-            <div className="card-base p-5 mb-4">
+            <div className="card-base p-5 mb-6">
               <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Status</span>
+                  <span className="badge badge-warning text-[10px]">PENDING APPROVAL</span>
+                </div>
+                <div className="h-px" style={{ background: 'var(--border-color)' }} />
                 <div className="flex justify-between items-center">
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Brand</span>
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{result.brand}</span>
@@ -870,106 +878,28 @@ export default function ScanPage() {
                 </div>
                 <div className="h-px" style={{ background: 'var(--border-color)' }} />
                 <div className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Volume</span>
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Estimated Volume</span>
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{result.volume}L</span>
                 </div>
                 <div className="h-px" style={{ background: 'var(--border-color)' }} />
                 <div className="flex justify-between items-center">
-                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>AI Confidence</span>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 rounded-full" style={{ background: 'var(--bg-secondary)' }}>
-                      <div className="h-full rounded-full" style={{ width: `${result.confidence}%`, background: result.confidence > 75 ? 'var(--brand-primary)' : '#f59e0b' }} />
-                    </div>
-                    <span className="text-xs font-medium" style={{ color: 'var(--brand-primary)' }}>{result.confidence}%</span>
-                  </div>
+                  <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Potential Points</span>
+                  <span className="text-sm font-bold text-green-500">~{result.pointsAwarded} pts</span>
                 </div>
-
-                {/* Color analysis */}
-                {result.colorAnalysis && (
-                  <>
-                    <div className="h-px" style={{ background: 'var(--border-color)' }} />
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Oil Color</span>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-4 h-4 rounded-full border"
-                          style={{
-                            background: `hsl(${result.colorAnalysis.hue}, ${result.colorAnalysis.saturation}%, ${result.colorAnalysis.lightness}%)`,
-                            borderColor: 'var(--border-color)',
-                          }}
-                        />
-                        <span className="text-xs font-medium capitalize" style={{ color: 'var(--text-primary)' }}>
-                          {result.colorAnalysis.dominantColor}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* ML Detections */}
-                {result.mlDetections.length > 0 && (
-                  <>
-                    <div className="h-px" style={{ background: 'var(--border-color)' }} />
-                    <div>
-                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>AI Detections:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {result.mlDetections.map((d, i) => (
-                          <span key={i} className="badge badge-info text-[10px]">{d}</span>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
 
-            {/* Debug log for successful scans */}
-            {result.classificationDetails && result.classificationDetails.length > 0 && (
-              <div className="mb-4">
-                <button
-                  onClick={() => setShowDebug(!showDebug)}
-                  className="flex items-center gap-1.5 text-xs font-medium mb-2"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <Eye size={12} />
-                  {showDebug ? 'Hide' : 'Show'} AI Pipeline Log
-                </button>
-                {showDebug && (
-                  <div className="p-3 rounded-xl text-[10px] font-mono space-y-0.5 max-h-48 overflow-y-auto"
-                    style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)' }}>
-                    {result.classificationDetails.map((d, i) => (
-                      <p key={i}>{d}</p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <div className="p-4 rounded-2xl mb-6 bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800">
+              <h4 className="text-sm font-bold text-green-800 dark:text-green-300 mb-1">Next Step: Schedule Pickup</h4>
+              <p className="text-xs text-green-700 dark:text-green-400">
+                To claim your points, you need to hand over the oil to one of our pickup stations.
+              </p>
+            </div>
 
-            {/* Points awarded - Modal style with backdrop blur */}
-            {showConfetti && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-sm animate-fade-in">
-                <div className="w-full max-w-xs rounded-3xl p-8 text-center shadow-2xl animate-scale-in" style={{ background: 'var(--bg-card)' }}>
-                  <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                    <CheckCircle2 size={40} className="text-green-500" />
-                  </div>
-                  <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>You Earned</p>
-                  <p className="text-5xl font-bold font-display gradient-text mb-2">+{result.pointsAwarded}</p>
-                  <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Points!</p>
-                  <div className="mt-6 flex flex-wrap justify-center gap-2">
-                    <span className="badge badge-success">+{result.volume}L Recycled</span>
-                  </div>
-                  <button
-                    onClick={() => setShowConfetti(false)}
-                    className="btn-primary w-full mt-8"
-                  >
-                    Awesome!
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <button onClick={reset} className="btn-primary w-full mb-3">Scan Another</button>
-            <button onClick={() => setState('manual')} className="btn-secondary w-full">Edit Details</button>
+            <button onClick={() => navigate('/schedule')} className="btn-primary w-full mb-3 flex items-center justify-center gap-2">
+               Schedule Pickup <ArrowRight size={18} />
+            </button>
+            <button onClick={reset} className="btn-secondary w-full">Back to Scanner</button>
           </div>
         )}
 

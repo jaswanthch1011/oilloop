@@ -74,11 +74,13 @@ export interface Pickup {
 // ── Scan ──
 export interface ScanResult {
   id: string;
+  userId: string;
   brand: string;
   oilType: string;
   volume: number;
   confidence: number;
   pointsAwarded: number;
+  status: 'pending' | 'approved' | 'rejected';
   scannedAt: string;
   imageUrl?: string;
 }

@@ -39,6 +39,7 @@ export default function RewardsPage() {
   const [search, setSearch] = useState('');
   const [redeemingId, setRedeemingId] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [ticketNumber, setTicketNumber] = useState('');
   const [tab, setTab] = useState<'shop' | 'history'>('shop');
 
   const filtered = useMemo(() => {
@@ -60,6 +61,8 @@ export default function RewardsPage() {
     if (!reward) return;
     const ok = spendPoints(reward.pointsCost);
     if (ok) {
+      const tktNum = `TKT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+      setTicketNumber(tktNum);
       addRedemption({
         rewardId: reward.id,
         rewardName: reward.name,
@@ -67,7 +70,7 @@ export default function RewardsPage() {
         status: 'pending',
       });
       setShowSuccess(true);
-      setTimeout(() => { setShowSuccess(false); setRedeemingId(null); }, 2000);
+      // Removed the auto-hide timeout to allow user to see the ticket
     }
   }, [redeemingId, spendPoints, addRedemption]);
 
@@ -201,14 +204,68 @@ export default function RewardsPage() {
           </div>
         )}
 
+        {showSuccess && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-fade-in">
+            <div className="w-full max-w-sm rounded-3xl p-8 text-center shadow-2xl animate-scale-in bg-white dark:bg-[#1e2b1c] border border-white/10">
+              <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/20">
+                <CheckCircle2 size={40} className="text-green-500" />
+              </div>
+
+              <h3 className="text-2xl font-bold font-display mb-2">Redemption Successful!</h3>
+              <p className="text-sm text-zinc-500 mb-6">Your reward is ready for pickup.</p>
+
+              <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 mb-6">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Ticket Number</p>
+                <p className="text-3xl font-black font-mono tracking-wider text-green-600 dark:text-lime-400">{ticketNumber}</p>
+              </div>
+
+              <div className="flex items-start gap-3 text-left p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 mb-8">
+                <ShoppingBag size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Please show this ticket at your <strong>nearest pickup station</strong> to collect your reward.
+                </p>
+              </div>
+
+              <button
+                onClick={() => { setShowSuccess(false); setRedeemingId(null); }}
+                className="btn-primary w-full py-3.5 shadow-xl shadow-green-500/20"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
         {redeemingId && !showSuccess && (
           <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-t-3xl p-6 pb-12 animate-slide-up bg-white dark:bg-[#1e2b1c]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold font-display">Confirm Redemption</h3>
-                <button onClick={() => setRedeemingId(null)} className="p-1"><X size={20} /></button>
+            <div className="w-full max-w-lg rounded-t-3xl p-6 pb-12 animate-slide-up bg-white dark:bg-[#1e2b1c] border-t border-white/10">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold font-display">Confirm Redemption</h3>
+                <button onClick={() => setRedeemingId(null)} className="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  <X size={20} />
+                </button>
               </div>
-              <button onClick={confirmRedeem} className="btn-primary w-full mt-4 py-3">Redeem Now</button>
+
+              {mockRewards.find(r => r.id === redeemingId) && (
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800 mb-6">
+                  <div className="text-4xl">{mockRewards.find(r => r.id === redeemingId)?.image}</div>
+                  <div>
+                    <p className="font-bold text-sm">{mockRewards.find(r => r.id === redeemingId)?.name}</p>
+                    <p className="text-xs text-zinc-500 flex items-center gap-1 mt-0.5">
+                      <Star size={12} className="text-amber-500" fill="currentColor" />
+                      {mockRewards.find(r => r.id === redeemingId)?.pointsCost} points
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs text-zinc-500 mb-8 px-2">
+                By confirming, the points will be deducted from your account. You can collect the item from any of our collection hubs.
+              </p>
+
+              <button onClick={confirmRedeem} className="btn-primary w-full py-4 shadow-xl shadow-green-500/20">
+                Confirm & Get Ticket
+              </button>
             </div>
           </div>
         )}

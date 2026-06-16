@@ -10,7 +10,7 @@ import { apiUrl } from '../lib/api';
 import { getOilGrade } from '../lib/calculations';
 
 export default function AdminDashboardPage() {
-  const { user, pickups, scanResults, updatePickupStatus, addNotification } = useAuth();
+  const { user, pickups, scanResults, updatePickupStatus, addNotification, approveScan, rejectScan, allScans } = useAuth();
   const navigate = useNavigate();
 
   // Role Gate check
@@ -22,6 +22,8 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [globalScans, setGlobalScans] = useState<any[]>([]);
+  const [editingPoints, setEditingPoints] = useState<string | null>(null);
+  const [newPoints, setNewPoints] = useState<number>(0);
 
   // Form state to add new location
   const [showAddForm, setShowAddForm] = useState(false);
@@ -336,12 +338,12 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Global Scans / Grading Panel */}
+        {/* Global Scans / Approval Panel */}
         {activeTab === 'scans' && (
           <div className="card-base p-5 mb-6">
-            <h3 className="section-title mb-4">AI Scans & Oil Grading</h3>
+            <h3 className="section-title mb-4">Pending Scan Approvals</h3>
             <div className="space-y-4">
-              {(globalScans.length > 0 ? globalScans : scanResults).map((s: any) => (
+              {allScans.filter(s => s.status === 'pending').map((s: any) => (
                 <div key={s.id} className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -349,13 +351,29 @@ export default function AdminDashboardPage() {
                       <p className="text-[10px] opacity-60">{new Date(s.scannedAt).toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-sm font-black text-green-600">+{s.pointsAwarded} pts</span>
-                      <p className="text-[10px] font-bold opacity-40">AWARDED</p>
+                       {editingPoints === s.id ? (
+                         <div className="flex items-center gap-1">
+                           <input
+                             type="number"
+                             value={newPoints}
+                             onChange={e => setNewPoints(Number(e.target.value))}
+                             className="w-16 px-2 py-1 text-xs border rounded bg-white dark:bg-zinc-800"
+                           />
+                           <button onClick={() => { approveScan(s.id, newPoints); setEditingPoints(null); }} className="p-1 text-green-500 bg-green-50 rounded">
+                             <Check size={14}/>
+                           </button>
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-end">
+                            <span className="text-sm font-black text-amber-600">~{s.pointsAwarded} pts</span>
+                            <button onClick={() => { setEditingPoints(s.id); setNewPoints(s.pointsAwarded); }} className="text-[9px] font-bold text-blue-500 hover:underline">EDIT POINTS</button>
+                         </div>
+                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                     <div>
-                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type & Grade</p>
+                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type</p>
                       <p className="text-xs font-semibold">{s.oilType}</p>
                       <p className="text-[9px] font-bold text-green-600 dark:text-lime-400">{getOilGrade(s.oilType)}</p>
                     </div>
@@ -363,15 +381,48 @@ export default function AdminDashboardPage() {
                       <p className="text-[10px] font-bold opacity-40 uppercase">Volume</p>
                       <p className="text-xs font-semibold">{s.volume}L</p>
                     </div>
-                    <div className="ml-auto text-right">
-                      <p className="text-[10px] font-bold opacity-40 uppercase">AI Confidence</p>
-                      <span className="text-xs font-bold text-teal-500">{s.confidence}% Match</span>
+                    <div className="ml-auto flex gap-2">
+                      <button
+                        onClick={() => rejectScan(s.id)}
+                        className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-[10px] font-bold hover:bg-red-50"
+                      >
+                        REJECT
+                      </button>
+                      <button
+                        onClick={() => approveScan(s.id)}
+                        className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[10px] font-bold hover:bg-green-600"
+                      >
+                        APPROVE
+                      </button>
                     </div>
                   </div>
                 </div>
               ))}
-              {(globalScans.length === 0 && scanResults.length === 0) && (
-                <p className="text-sm text-center py-10 opacity-40">No scans recorded yet.</p>
+              {allScans.filter(s => s.status === 'pending').length === 0 && (
+                <p className="text-sm text-center py-10 opacity-40">No pending scans for approval.</p>
+              )}
+
+              {/* Recent Activity */}
+              {allScans.some(s => s.status !== 'pending') && (
+                <div className="mt-8">
+                  <h4 className="text-[10px] font-bold uppercase tracking-widest mb-3 opacity-40">Processed Recently</h4>
+                  <div className="space-y-2">
+                    {allScans.filter(s => s.status !== 'pending').slice(0, 5).map((s: any) => (
+                      <div key={s.id} className="p-3 rounded-xl border border-zinc-50 dark:border-zinc-900 flex justify-between items-center opacity-70 bg-white/50 dark:bg-zinc-800/20">
+                        <div>
+                          <p className="text-xs font-bold">{s.brand} • {s.volume}L</p>
+                          <p className="text-[9px]">{new Date(s.scannedAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold">{s.pointsAwarded} pts</span>
+                          <span className={`text-[8px] font-black px-2 py-0.5 rounded ${s.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {s.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>

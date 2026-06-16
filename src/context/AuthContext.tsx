@@ -21,7 +21,10 @@ interface AuthContextType {
   addPickup: (pickup: Omit<Pickup, 'id' | 'createdAt'>) => void;
   updatePickupStatus: (id: string, status: Pickup['status']) => void;
   scanResults: ScanResult[];
-  addScanResult: (result: Omit<ScanResult, 'id' | 'scannedAt'>) => void;
+  addScanResult: (result: Omit<ScanResult, 'id' | 'scannedAt' | 'status' | 'userId'>) => void;
+  approveScan: (scanId: string, adjustedPoints?: number) => void;
+  rejectScan: (scanId: string) => void;
+  allScans: ScanResult[];
   redemptions: Redemption[];
   addRedemption: (redemption: Omit<Redemption, 'id' | 'redeemedAt'>) => void;
   notifications: Notification[];
@@ -288,7 +291,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPickups(prev => prev.map(p => p.id === id ? { ...p, status } : p));
   }, [user, fetchAllData]);
 
-  const addScanResult = useCallback(async (result: Omit<ScanResult, 'id' | 'scannedAt'>) => {
+  const addScanResult = useCallback(async (result: Omit<ScanResult, 'id' | 'scannedAt' | 'status' | 'userId'>) => {
     if (!user) return;
     try {
       const res = await fetch(apiUrl('/api/scans'), {
@@ -299,14 +302,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           brand: result.brand,
           oilType: result.oilType,
           volume: result.volume,
-          points: result.pointsAwarded
+          points: result.pointsAwarded,
+          status: 'pending'
         })
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.user) setUser(data.user);
         setScanResults(prev => [data.scan, ...prev]);
-        await fetchAllData(user.id, user.role);
         return;
       }
     } catch (err) {
@@ -314,9 +316,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Fallback
-    const newResult: ScanResult = { ...result, id: generateId(), scannedAt: new Date().toISOString() };
+    const newResult: ScanResult = {
+      ...result,
+      id: generateId(),
+      userId: user.id,
+      status: 'pending',
+      scannedAt: new Date().toISOString()
+    };
     setScanResults(prev => [newResult, ...prev]);
-  }, [user, fetchAllData]);
+  }, [user]);
+
+  const approveScan = useCallback((scanId: string, adjustedPoints?: number) => {
+    setScanResults(prev => prev.map(scan => {
+      if (scan.id === scanId) {
+        const finalPoints = adjustedPoints !== undefined ? adjustedPoints : scan.pointsAwarded;
+
+        // In a real app, this would update the user on the server
+        // Mock logic: if it's the current user, update their points
+        if (user && scan.userId === user.id && scan.status === 'pending') {
+          addPoints(finalPoints);
+          addLiters(scan.volume);
+        }
+
+        return { ...scan, status: 'approved', pointsAwarded: finalPoints };
+      }
+      return scan;
+    }));
+
+    addNotification({
+      type: 'reward_alert',
+      title: 'Scan Approved! 🎉',
+      message: 'Your oil scan has been validated and points awarded.',
+      read: false,
+      icon: '✅',
+    });
+  }, [user, addPoints, addLiters]);
+
+  const rejectScan = useCallback((scanId: string) => {
+    setScanResults(prev => prev.map(scan =>
+      scan.id === scanId ? { ...scan, status: 'rejected' } : scan
+    ));
+
+    addNotification({
+      type: 'system',
+      title: 'Scan Rejected',
+      message: 'Your oil scan could not be validated.',
+      read: false,
+      icon: '❌',
+    });
+  }, []);
 
   const addRedemption = useCallback(async (redemption: Omit<Redemption, 'id' | 'redeemedAt'>) => {
     if (!user) return;
@@ -410,7 +458,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login, signup, logout, updateProfile,
       addPoints, spendPoints, addLiters, addBadge,
       pickups, addPickup, updatePickupStatus,
-      scanResults, addScanResult,
+      scanResults: scanResults.filter(s => s.userId === user?.id),
+      addScanResult, approveScan, rejectScan, allScans: scanResults,
       redemptions, addRedemption,
       notifications, markNotificationRead, deleteNotification, clearAllNotifications, addNotification, unreadCount,
     }}>

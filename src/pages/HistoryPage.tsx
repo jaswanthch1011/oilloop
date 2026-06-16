@@ -153,9 +153,13 @@ export default function HistoryPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
                       <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>AI Scan: {s.brand}</span>
-                      <span className="text-[10px] font-semibold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/30">
-                        {s.confidence}% Match
-                      </span>
+                      {s.status === 'pending' ? (
+                        <span className="badge badge-warning flex items-center gap-1"><Clock size={11} /> Pending</span>
+                      ) : s.status === 'approved' ? (
+                        <span className="badge badge-success flex items-center gap-1"><CheckCircle2 size={11} /> Approved</span>
+                      ) : (
+                        <span className="badge flex items-center gap-1" style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}><AlertCircle size={11} /> Rejected</span>
+                      )}
                     </div>
                     <h4 className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                       {s.oilType} ({s.volume}L)
@@ -165,10 +169,10 @@ export default function HistoryPage() {
                     </p>
                     <div className="flex justify-between items-center mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
                       <span className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>
-                        Instant Scan Award
+                        {s.status === 'pending' ? 'Pending Validation' : s.status === 'approved' ? 'Awarded Points' : 'Validation Failed'}
                       </span>
-                      <span className="text-xs font-bold" style={{ color: 'var(--brand-primary)' }}>
-                        +{s.pointsAwarded} Points
+                      <span className={`text-xs font-bold ${s.status === 'rejected' ? 'text-red-500' : 'text-brand-primary'}`}>
+                        {s.status === 'approved' ? `+${s.pointsAwarded}` : `~${s.pointsAwarded}`} Points
                       </span>
                     </div>
                   </div>
