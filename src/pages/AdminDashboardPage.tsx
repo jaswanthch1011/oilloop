@@ -16,9 +16,11 @@ export default function AdminDashboardPage() {
   const isAdmin = user?.role === 'admin';
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'pickups' | 'scans' | 'locations'>('pickups');
   const [locations, setLocations] = useState<Location[]>(mockLocations);
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [globalScans, setGlobalScans] = useState<any[]>([]);
 
   // Form state to add new location
   const [showAddForm, setShowAddForm] = useState(false);
@@ -29,6 +31,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (isAdmin) {
+      // Fetch stats
       fetch(apiUrl('/api/admin/stats'))
         .then(res => res.json())
         .then(data => {
@@ -39,6 +42,14 @@ export default function AdminDashboardPage() {
           console.error('Failed to fetch admin stats:', err);
           setLoadingStats(false);
         });
+
+      // Fetch global scans for visibility
+      fetch(apiUrl('/api/admin/scans'))
+        .then(res => res.json())
+        .then(data => {
+          if (data.scans) setGlobalScans(data.scans);
+        })
+        .catch(err => console.error('Failed to fetch global scans:', err));
     }
   }, [isAdmin]);
 
@@ -245,70 +256,128 @@ export default function AdminDashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        {/* Active Pickups Panel */}
-        <div className="card-base p-5 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="section-title">Manage Pickups</h3>
-            <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{filteredPickups.length} Orders</span>
-          </div>
-
-          {/* Search bar */}
-          <div className="relative mb-4">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
-              <Search size={16} />
-            </span>
-            <input 
-              type="text" 
-              placeholder="Search by ID or Location..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="input-base pl-10"
-            />
-          </div>
-
-          <div className="space-y-3">
-            {filteredPickups.map(p => (
-              <div key={p.id} className="p-3.5 rounded-xl border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-secondary)' }}>
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{p.id}</span>
-                    <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.locationName}</p>
-                  </div>
-                  <span className={`badge uppercase text-[8px] font-extrabold ${
-                    p.status === 'scheduled' ? 'badge-warning' :
-                    p.status === 'confirmed' ? 'badge-info' : 'badge-success'
-                  }`}>
-                    {p.status}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs mt-3 pt-2.5 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>
-                    {p.oilType} • {p.estimatedVolume}L
-                  </span>
-                  {p.status !== 'completed' && (
-                    <button
-                      onClick={() => handleStatusChange(p.id, p.status)}
-                      className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 dark:bg-lime-500 dark:hover:bg-lime-600 text-[10px] font-bold text-white dark:text-zinc-950 transition-all flex items-center gap-1"
-                    >
-                      {p.status === 'scheduled' && 'Confirm Order'}
-                      {p.status === 'confirmed' && 'Mark Picked Up'}
-                      {p.status === 'picked_up' && 'Process Biodiesel'}
-                      {p.status === 'processed' && 'Complete Order'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {filteredPickups.length === 0 && (
-              <p className="text-xs text-center py-6" style={{ color: 'var(--text-muted)' }}>No pickups found matching your query</p>
-            )}
-          </div>
+        {/* View Tabs */}
+        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
+          {(['pickups', 'scans', 'locations'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${
+                activeTab === tab ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-zinc-500'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
 
+        {/* Active Pickups Panel */}
+        {activeTab === 'pickups' && (
+          <div className="card-base p-5 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="section-title">Manage Pickups</h3>
+              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{filteredPickups.length} Orders</span>
+            </div>
+
+            {/* Search bar */}
+            <div className="relative mb-4">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
+                <Search size={16} />
+              </span>
+              <input
+                type="text"
+                placeholder="Search by ID or Location..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="input-base pl-10"
+              />
+            </div>
+
+            <div className="space-y-3">
+              {filteredPickups.map(p => (
+                <div key={p.id} className="p-3.5 rounded-xl border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-secondary)' }}>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{p.id}</span>
+                      <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.locationName}</p>
+                    </div>
+                    <span className={`badge uppercase text-[8px] font-extrabold ${
+                      p.status === 'scheduled' ? 'badge-warning' :
+                      p.status === 'confirmed' ? 'badge-info' : 'badge-success'
+                    }`}>
+                      {p.status}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs mt-3 pt-2.5 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>
+                      {p.oilType} • {p.estimatedVolume}L
+                    </span>
+                    {p.status !== 'completed' && (
+                      <button
+                        onClick={() => handleStatusChange(p.id, p.status)}
+                        className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 dark:bg-lime-500 dark:hover:bg-lime-600 text-[10px] font-bold text-white dark:text-zinc-950 transition-all flex items-center gap-1"
+                      >
+                        {p.status === 'scheduled' && 'Confirm Order'}
+                        {p.status === 'confirmed' && 'Mark Picked Up'}
+                        {p.status === 'picked_up' && 'Process Biodiesel'}
+                        {p.status === 'processed' && 'Complete Order'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {filteredPickups.length === 0 && (
+                <p className="text-xs text-center py-6" style={{ color: 'var(--text-muted)' }}>No pickups found matching your query</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Global Scans / Grading Panel */}
+        {activeTab === 'scans' && (
+          <div className="card-base p-5 mb-6">
+            <h3 className="section-title mb-4">AI Scans & Oil Grading</h3>
+            <div className="space-y-4">
+              {(globalScans.length > 0 ? globalScans : scanResults).map((s: any) => (
+                <div key={s.id} className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="text-sm font-bold">{s.brand}</h4>
+                      <p className="text-[10px] opacity-60">{new Date(s.scannedAt).toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-green-600">+{s.pointsAwarded} pts</span>
+                      <p className="text-[10px] font-bold opacity-40">AWARDED</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                    <div>
+                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type</p>
+                      <p className="text-xs font-semibold">{s.oilType}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold opacity-40 uppercase">Volume</p>
+                      <p className="text-xs font-semibold">{s.volume}L</p>
+                    </div>
+                    <div className="ml-auto text-right">
+                      <p className="text-[10px] font-bold opacity-40 uppercase">AI Confidence</p>
+                      <span className="text-xs font-bold text-teal-500">{s.confidence}% Match</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {(globalScans.length === 0 && scanResults.length === 0) && (
+                <p className="text-sm text-center py-10 opacity-40">No scans recorded yet.</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Location Management */}
-        <div className="card-base p-5 mb-6">
+        {activeTab === 'locations' && (
+          <div className="card-base p-5 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="section-title">Collection Locations</h3>
             <button 
