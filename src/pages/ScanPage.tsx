@@ -3,7 +3,7 @@ import { Camera, ScanLine, Zap, CheckCircle2, AlertCircle, Edit3, Loader2, Uploa
 import TopBar from '../components/layout/TopBar';
 import { useAuth } from '../context/AuthContext';
 import { OIL_BRANDS, OIL_TYPES } from '../lib/constants';
-import { calculatePoints } from '../lib/calculations';
+import { calculatePoints, getOilGrade } from '../lib/calculations';
 import {
   loadModels,
   classifyOilImage,
@@ -763,6 +763,11 @@ export default function ScanPage() {
                   <option value="">Select type</option>
                   {OIL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+                {manualType && (
+                  <p className="text-[10px] mt-1.5 font-bold text-green-600 dark:text-lime-400">
+                    Detected {getOilGrade(manualType)}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -853,7 +858,10 @@ export default function ScanPage() {
                 <div className="h-px" style={{ background: 'var(--border-color)' }} />
                 <div className="flex justify-between items-center">
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Oil Type</span>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{result.oilType}</span>
+                  <div className="text-right">
+                    <span className="text-sm font-semibold block" style={{ color: 'var(--text-primary)' }}>{result.oilType}</span>
+                    <span className="text-[10px] font-bold text-green-600">{getOilGrade(result.oilType)}</span>
+                  </div>
                 </div>
                 <div className="h-px" style={{ background: 'var(--border-color)' }} />
                 <div className="flex justify-between items-center">

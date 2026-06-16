@@ -7,6 +7,7 @@ import TopBar from '../components/layout/TopBar';
 import { mockLocations } from '../data/mockData';
 import type { Pickup, Location } from '../types';
 import { apiUrl } from '../lib/api';
+import { getOilGrade } from '../lib/calculations';
 
 export default function AdminDashboardPage() {
   const { user, pickups, scanResults, updatePickupStatus, addNotification } = useAuth();
@@ -354,8 +355,9 @@ export default function AdminDashboardPage() {
                   </div>
                   <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
                     <div>
-                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type</p>
+                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type & Grade</p>
                       <p className="text-xs font-semibold">{s.oilType}</p>
+                      <p className="text-[9px] font-bold text-green-600 dark:text-lime-400">{getOilGrade(s.oilType)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold opacity-40 uppercase">Volume</p>
