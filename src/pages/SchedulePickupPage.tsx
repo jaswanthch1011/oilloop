@@ -3,7 +3,7 @@ import { MapPin, Clock, ChevronRight, CheckCircle2, Calendar, Droplets, Package,
 import TopBar from '../components/layout/TopBar';
 import { useAuth } from '../context/AuthContext';
 import { mockLocations } from '../data/mockData';
-import { OIL_TYPES } from '../lib/constants';
+import { OIL_TYPES, OIL_GRADES } from '../lib/constants';
 
 type Step = 'location' | 'slot' | 'details' | 'review' | 'confirmed';
 
@@ -199,7 +199,19 @@ export default function SchedulePickupPage() {
                   <Droplets size={14} /> Oil Type
                 </label>
                 <select value={oilType} onChange={e => setOilType(e.target.value)} className="input-base">
-                  {OIL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <option value="">Select type</option>
+                  <optgroup label="GRADE 1 — PREMIUM: 150 PTS/L">
+                    {OIL_GRADES.GRADE_1.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 2 — HIGH: 125 PTS/L">
+                    {OIL_GRADES.GRADE_2.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 3 — STANDARD: 100 PTS/L">
+                    {OIL_GRADES.GRADE_3.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 4 — LOW: 75 PTS/L">
+                    {OIL_GRADES.GRADE_4.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
                 </select>
               </div>
               <div>

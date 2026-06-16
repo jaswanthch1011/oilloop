@@ -14,7 +14,8 @@ const BottomNav = memo(() => {
   const location = useLocation();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e2b1c] border-t border-zinc-100 dark:border-zinc-800">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t border-zinc-100 dark:border-zinc-800/30 shadow-lg"
+      style={{ background: 'var(--bg-card)' }}>
       <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-1">
         {navItems.map(({ to, icon: Icon, label }) => {
           const isActive = location.pathname === to || (to === '/dashboard' && location.pathname === '/');
@@ -28,7 +29,7 @@ const BottomNav = memo(() => {
             >
               {isScan ? (
                 <div
-                  className={`flex items-center justify-center w-12 h-12 -mt-6 rounded-2xl shadow-lg transition-all duration-300 ${isActive ? 'bg-green-500 shadow-green-500/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}
+                  className={`flex items-center justify-center w-12 h-12 -mt-6 rounded-2xl shadow-lg transition-all duration-300 ${isActive ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-green-500/30 ring-4 ring-white/20' : 'bg-white/40 dark:bg-zinc-800/40 backdrop-blur-md'}`}
                 >
                   <Icon size={22} color={isActive ? '#fff' : 'var(--text-muted)'} />
                 </div>

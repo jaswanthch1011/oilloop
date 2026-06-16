@@ -86,7 +86,6 @@ export default function DashboardPage() {
     { icon: CalendarPlus, label: 'Schedule Pickup', to: '/schedule', color: '#22c55e' },
     { icon: ScanLine, label: 'Scan Oil', to: '/scan', color: '#14b8a6' },
     { icon: Gift, label: 'Rewards', to: '/rewards', color: '#f59e0b' },
-    { icon: TrendingUp, label: 'Leaderboard', to: '/leaderboard', color: '#8b5cf6' },
     { icon: HelpCircle, label: 'FAQ & Help', to: '/faq', color: '#ec4899' },
     { icon: MessageCircle, label: 'AI Chat', to: '/chatbot', color: '#06b6d4' },
   ];
@@ -108,9 +107,14 @@ export default function DashboardPage() {
   const chartColor = isDark ? '#c6d631' : '#22c55e';
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+      {/* Background blobs for glassmorphism pop */}
+      <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10 blur-3xl" style={{ background: 'var(--brand-primary)' }} />
+      <div className="absolute top-1/4 -left-20 w-48 h-48 rounded-full opacity-10 blur-3xl" style={{ background: 'var(--brand-accent)' }} />
+      <div className="absolute bottom-1/4 -right-10 w-40 h-40 rounded-full opacity-10 blur-3xl" style={{ background: 'var(--brand-primary)' }} />
+
       <TopBar />
-      <div className="page-container pt-2">
+      <div className="page-container pt-2 relative z-10">
         {/* Greeting */}
         <div className="flex items-center gap-3 mb-6 animate-slide-down">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl glass-card-strong shadow-card">

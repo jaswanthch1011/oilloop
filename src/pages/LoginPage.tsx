@@ -36,24 +36,25 @@ export default function LoginPage() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full opacity-10 blur-3xl" style={{ background: 'var(--brand-accent)' }} />
 
       <div className="flex-1 flex flex-col justify-center px-6 py-12 relative z-10 max-w-lg mx-auto w-full">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg"
-            style={{ background: 'var(--bg-card)' }}>
-            <img src="/logo.png" alt="FrytoFly Logo" className="w-full h-full object-cover" />
+        <div className="glass-card-strong p-8 backdrop-blur-3xl shadow-2xl border border-white/20">
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shadow-lg"
+              style={{ background: 'var(--bg-card)' }}>
+              <img src="/logo.png" alt="FrytoFly Logo" className="w-full h-full object-cover" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold font-display gradient-text">FrytoFly</h1>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Recycle · Reward · Repeat</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold font-display gradient-text">FrytoFly</h1>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Recycle · Reward · Repeat</p>
-          </div>
-        </div>
 
-        <h2 className="text-2xl font-bold font-display mt-8 mb-1" style={{ color: 'var(--text-primary)' }}>
-          Welcome back! 👋
-        </h2>
-        <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-          Sign in to continue your eco journey
-        </p>
+          <h2 className="text-2xl font-bold font-display mt-8 mb-1" style={{ color: 'var(--text-primary)' }}>
+            Welcome back! 👋
+          </h2>
+          <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
+            Sign in to continue your eco journey
+          </p>
 
         {/* ─── Role Selector ─── */}
         <div className="mb-5">
@@ -179,12 +180,13 @@ export default function LoginPage() {
         )}
 
         {/* Signup link */}
-        <p className="text-center mt-8 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Don't have an account?{' '}
-          <Link to="/signup" className="font-semibold" style={{ color: 'var(--brand-primary)' }}>
-            Sign Up
-          </Link>
-        </p>
+          <p className="text-center mt-8 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Don't have an account?{' '}
+            <Link to="/signup" className="font-semibold" style={{ color: 'var(--brand-primary)' }}>
+              Sign Up
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

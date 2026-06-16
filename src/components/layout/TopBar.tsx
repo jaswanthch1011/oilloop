@@ -21,18 +21,18 @@ export default function TopBar({ title, showBack = false, showNotifications = tr
 
   return (
     <header
-      className="sticky top-0 z-40 flex items-center justify-between px-4 py-3"
+      className={`sticky top-0 z-40 flex items-center justify-between px-4 py-3 transition-all duration-300 ${transparent ? '' : 'backdrop-blur-md border-b'}`}
       style={{
-        background: transparent ? 'transparent' : 'var(--bg-primary)',
-        borderBottom: transparent ? 'none' : '1px solid var(--border-color)',
+        background: transparent ? 'transparent' : 'var(--bg-card)',
+        borderColor: 'var(--border-color)',
       }}
     >
       <div className="flex items-center gap-3">
         {showBack && (
           <button
             onClick={() => navigate(-1)}
-            className="p-2 rounded-xl transition-colors"
-            style={{ background: 'var(--bg-secondary)' }}
+            className="p-2 rounded-xl transition-all active:scale-95"
+            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}
           >
             <ChevronLeft size={20} style={{ color: 'var(--text-primary)' }} />
           </button>

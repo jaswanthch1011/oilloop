@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, ScanLine, Zap, CheckCircle2, AlertCircle, Edit3, Loader2, Upload, XCircle, Info, Eye } from 'lucide-react';
 import TopBar from '../components/layout/TopBar';
 import { useAuth } from '../context/AuthContext';
-import { OIL_BRANDS, OIL_TYPES } from '../lib/constants';
+import { OIL_BRANDS, OIL_TYPES, OIL_GRADES } from '../lib/constants';
 import { calculatePoints, getOilGrade } from '../lib/calculations';
 import {
   loadModels,
@@ -440,7 +440,7 @@ export default function ScanPage() {
                 <ScanLine size={64} style={{ color: 'var(--brand-primary)' }} />
               </div>
               <div className="absolute -bottom-2 -right-2 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg" style={{ background: 'var(--brand-primary)' }}>
-                <Camera size={20} color="white" />
+                <Upload size={20} color="white" />
               </div>
             </div>
 
@@ -448,7 +448,7 @@ export default function ScanPage() {
               AI Oil Scanner
             </h2>
             <p className="text-sm text-center mb-4 max-w-xs" style={{ color: 'var(--text-secondary)' }}>
-              Scan your used cooking oil container using the camera or upload an image. Our AI uses <strong>MobileNet + COCO-SSD</strong> to detect the brand, type, and volume.
+              Upload an image of your used cooking oil container. Our AI uses <strong>MobileNet + COCO-SSD</strong> to detect the brand, type, and volume.
             </p>
 
             {/* AI Pipeline Info */}
@@ -493,12 +493,9 @@ export default function ScanPage() {
               </div>
             )}
 
-            <button onClick={startCamera} className="btn-primary w-full flex items-center justify-center gap-2 mb-3">
-              <Camera size={18} /> Open Camera & Scan
-            </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="btn-secondary w-full flex items-center justify-center gap-2 mb-3"
+              className="btn-primary w-full flex items-center justify-center gap-2 mb-3"
             >
               <Upload size={18} /> Upload Oil Image
             </button>
@@ -718,12 +715,9 @@ export default function ScanPage() {
               </div>
             )}
 
-            <button onClick={startCamera} className="btn-primary w-full flex items-center justify-center gap-2 mb-3">
-              <Camera size={18} /> Try Again with Camera
-            </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="btn-secondary w-full flex items-center justify-center gap-2 mb-3"
+              className="btn-primary w-full flex items-center justify-center gap-2 mb-3"
             >
               <Upload size={18} /> Upload a Different Image
             </button>
@@ -761,7 +755,18 @@ export default function ScanPage() {
                 <label className="block text-xs font-semibold mb-1.5" style={{ color: 'var(--text-secondary)' }}>Oil Type</label>
                 <select value={manualType} onChange={e => setManualType(e.target.value)} className="input-base">
                   <option value="">Select type</option>
-                  {OIL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <optgroup label="GRADE 1 — PREMIUM: 150 PTS/L">
+                    {OIL_GRADES.GRADE_1.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 2 — HIGH: 125 PTS/L">
+                    {OIL_GRADES.GRADE_2.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 3 — STANDARD: 100 PTS/L">
+                    {OIL_GRADES.GRADE_3.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 4 — LOW: 75 PTS/L">
+                    {OIL_GRADES.GRADE_4.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
                 </select>
                 {manualType && (
                   <p className="text-[10px] mt-1.5 font-bold text-green-600 dark:text-lime-400">
@@ -984,7 +989,18 @@ export default function ScanPage() {
                 <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Oil Type</label>
                 <select value={manualType} onChange={e => setManualType(e.target.value)} className="input-base">
                   <option value="">Select type</option>
-                  {OIL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  <optgroup label="GRADE 1 — PREMIUM: 150 PTS/L">
+                    {OIL_GRADES.GRADE_1.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 2 — HIGH: 125 PTS/L">
+                    {OIL_GRADES.GRADE_2.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 3 — STANDARD: 100 PTS/L">
+                    {OIL_GRADES.GRADE_3.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
+                  <optgroup label="GRADE 4 — LOW: 75 PTS/L">
+                    {OIL_GRADES.GRADE_4.types.map(t => <option key={t} value={t}>{t}</option>)}
+                  </optgroup>
                 </select>
               </div>
               <div>
