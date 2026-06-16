@@ -9,7 +9,7 @@ import type { Pickup, Location } from '../types';
 import { apiUrl } from '../lib/api';
 
 export default function AdminDashboardPage() {
-  const { user, pickups, updatePickupStatus, addNotification } = useAuth();
+  const { user, pickups, scanResults, updatePickupStatus, addNotification } = useAuth();
   const navigate = useNavigate();
 
   // Role Gate check
@@ -465,6 +465,7 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         </div>
+        )}
 
       </div>
     </div>
