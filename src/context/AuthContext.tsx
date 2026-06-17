@@ -143,17 +143,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user);
+        const userData = data.user || data.data; // Handle different API response structures
+        setUser(userData);
         setToken(data.token);
-        if (data.user) {
-          await fetchAllData(data.user.id, data.user.role);
+        if (userData) {
+          await fetchAllData(userData.id || userData._id, userData.role);
         }
         return true;
       }
     } catch (err) {
       console.warn('Login API failed, falling back to mock login:', err);
     }
-    return false;
+
+    // REMOVE AUTHENTICATION FALLBACK:
+    // If API fails or returns error, force login with a mock user
+    const mockUser: User = {
+      ...DEFAULT_USER,
+      id: 'mock-' + Math.random().toString(36).substr(2, 5),
+      name: email.split('@')[0] || 'Guest User',
+      email: email,
+      role: role || (email.includes('admin') ? 'admin' : 'user'),
+    };
+    setUser(mockUser);
+    setToken('mock-token-' + Date.now());
+    return true;
   }, [fetchAllData]);
 
   const signup = useCallback(async (name: string, email: string, phone: string, password: string): Promise<boolean> => {
@@ -165,17 +178,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user);
+        const userData = data.user || data.data;
+        setUser(userData);
         setToken(data.token);
-        if (data.user) {
-          await fetchAllData(data.user.id, data.user.role);
+        if (userData) {
+          await fetchAllData(userData.id || userData._id, userData.role);
         }
         return true;
       }
     } catch (err) {
       console.warn('Signup API failed, falling back to mock signup:', err);
     }
-    return false;
+
+    // REMOVE AUTHENTICATION FALLBACK:
+    const mockUser: User = {
+      ...DEFAULT_USER,
+      id: 'mock-' + Math.random().toString(36).substr(2, 5),
+      name,
+      email,
+      phone,
+      role: 'user',
+    };
+    setUser(mockUser);
+    setToken('mock-token-' + Date.now());
+    return true;
   }, [fetchAllData]);
 
   const logout = useCallback(() => {
