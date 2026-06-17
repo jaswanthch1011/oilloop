@@ -121,7 +121,10 @@ app.post('/api/auth/signup', async (req, res) => {
       joinedAt: new Date()
     });
 
-    res.status(201).json({ user: mapUserResponse(user) });
+    res.status(201).json({
+      user: mapUserResponse(user),
+      token: 'mock-jwt-token-' + id
+    });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Server database error' });
@@ -133,8 +136,8 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     let user;
-    if (role === 'admin' || email === 'admin@oilloop.in') {
-      user = await User.findOne({ email: 'admin@oilloop.in', role: 'admin' });
+    if (role === 'admin' || email === 'admin@frytofly.in') {
+      user = await User.findOne({ email: 'admin@frytofly.in', role: 'admin' });
     } else {
       user = await User.findOne({ email, role: 'user' });
     }
@@ -143,7 +146,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    res.json({ user: mapUserResponse(user) });
+    res.json({
+      user: mapUserResponse(user),
+      token: 'mock-jwt-token-' + user.id
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server database error' });

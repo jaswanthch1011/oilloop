@@ -10,7 +10,7 @@ import { apiUrl } from '../lib/api';
 import { getOilGrade } from '../lib/calculations';
 
 export default function AdminDashboardPage() {
-  const { user, pickups, scanResults, updatePickupStatus, addNotification, approveScan, rejectScan, allScans } = useAuth();
+  const { user, pickups, scanResults, updatePickupStatus, addNotification, approveScan, rejectScan, allScans, authFetch } = useAuth();
   const navigate = useNavigate();
 
   // Role Gate check
@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (isAdmin) {
       // Fetch stats
-      fetch(apiUrl('/api/admin/stats'))
+      authFetch(apiUrl('/api/admin/stats'))
         .then(res => res.json())
         .then(data => {
           setStats(data);
@@ -47,14 +47,14 @@ export default function AdminDashboardPage() {
         });
 
       // Fetch global scans for visibility
-      fetch(apiUrl('/api/admin/scans'))
+      authFetch(apiUrl('/api/admin/scans'))
         .then(res => res.json())
         .then(data => {
           if (data.scans) setGlobalScans(data.scans);
         })
         .catch(err => console.error('Failed to fetch global scans:', err));
     }
-  }, [isAdmin]);
+  }, [isAdmin, authFetch]);
 
   if (!isAdmin) {
     return (
@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
     await updatePickupStatus(pickupId, nextStatus);
 
     // Refresh stats after status change
-    fetch(apiUrl('/api/admin/stats'))
+    authFetch(apiUrl('/api/admin/stats'))
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(err => console.error('Failed to refresh stats:', err));

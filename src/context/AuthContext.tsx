@@ -22,8 +22,8 @@ interface AuthContextType {
   updatePickupStatus: (id: string, status: Pickup['status']) => void;
   scanResults: ScanResult[];
   addScanResult: (result: Omit<ScanResult, 'id' | 'scannedAt' | 'status' | 'userId'>) => void;
-  approveScan: (scanId: string, adjustedPoints?: number) => void;
-  rejectScan: (scanId: string) => void;
+  approveScan: (scanId: string, adjustedPoints?: number) => Promise<void>;
+  rejectScan: (scanId: string) => Promise<void>;
   allScans: ScanResult[];
   redemptions: Redemption[];
   addRedemption: (redemption: Omit<Redemption, 'id' | 'redeemedAt'>) => void;
@@ -33,6 +33,7 @@ interface AuthContextType {
   clearAllNotifications: () => void;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
   unreadCount: number;
+  authFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -66,6 +67,7 @@ function getStoredData<T>(key: string, fallback: T): T {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getStoredData('oilloop_user', null));
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('oilloop_token'));
   const [pickups, setPickups] = useState<Pickup[]>(() => getStoredData('oilloop_pickups', []));
   const [scanResults, setScanResults] = useState<ScanResult[]>(() => getStoredData('oilloop_scans', []));
   const [redemptions, setRedemptions] = useState<Redemption[]>(() => getStoredData('oilloop_redemptions', []));
@@ -73,19 +75,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Sync state to local storage as fallback
   useEffect(() => { if (user) localStorage.setItem('oilloop_user', JSON.stringify(user)); }, [user]);
+  useEffect(() => { if (token) localStorage.setItem('oilloop_token', token); else localStorage.removeItem('oilloop_token'); }, [token]);
   useEffect(() => { localStorage.setItem('oilloop_pickups', JSON.stringify(pickups)); }, [pickups]);
   useEffect(() => { localStorage.setItem('oilloop_scans', JSON.stringify(scanResults)); }, [scanResults]);
   useEffect(() => { localStorage.setItem('oilloop_redemptions', JSON.stringify(redemptions)); }, [redemptions]);
   useEffect(() => { localStorage.setItem('oilloop_notifications', JSON.stringify(notifications)); }, [notifications]);
 
+  const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const headers = {
+      ...options.headers,
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    return fetch(url, { ...options, headers });
+  }, [token]);
+
   // Fetch all user data from API helper
   const fetchAllData = useCallback(async (userId: string, role: string) => {
     try {
       const [pRes, sRes, nRes, rRes] = await Promise.all([
-        fetch(apiUrl(`/api/pickups?userId=${userId}&role=${role}`)),
-        fetch(apiUrl(`/api/scans?userId=${userId}`)),
-        fetch(apiUrl(`/api/notifications?userId=${userId}`)),
-        fetch(apiUrl(`/api/redemptions?userId=${userId}`))
+        authFetch(apiUrl(`/api/pickups?userId=${userId}&role=${role}`)),
+        authFetch(apiUrl(`/api/scans?userId=${userId}`)),
+        authFetch(apiUrl(`/api/notifications?userId=${userId}`)),
+        authFetch(apiUrl(`/api/redemptions?userId=${userId}`))
       ]);
       if (pRes.ok) {
         const data = await pRes.json();
@@ -132,22 +144,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
-        await fetchAllData(data.user.id, data.user.role);
+        setToken(data.token);
+        if (data.user) {
+          await fetchAllData(data.user.id, data.user.role);
+        }
         return true;
       }
     } catch (err) {
       console.warn('Login API failed, falling back to mock login:', err);
     }
-
-    // Fallback Mock Login
-    await new Promise(r => setTimeout(r, 200));
-    if (role === 'admin' || email === 'admin@oilloop.in') {
-      const adminUser = { ...DEFAULT_USER, id: 'admin1', email: email || 'admin@oilloop.in', role: 'admin' as const, name: 'Admin', avatar: '🛡️' };
-      setUser(adminUser);
-    } else {
-      setUser({ ...DEFAULT_USER, email });
-    }
-    return true;
+    return false;
   }, [fetchAllData]);
 
   const signup = useCallback(async (name: string, email: string, phone: string, password: string): Promise<boolean> => {
@@ -160,44 +166,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
-        await fetchAllData(data.user.id, data.user.role);
+        setToken(data.token);
+        if (data.user) {
+          await fetchAllData(data.user.id, data.user.role);
+        }
         return true;
       }
     } catch (err) {
       console.warn('Signup API failed, falling back to mock signup:', err);
     }
-
-    // Fallback Mock Signup
-    await new Promise(r => setTimeout(r, 800));
-    setUser({
-      ...DEFAULT_USER,
-      id: generateId(),
-      name,
-      email,
-      phone,
-      totalPoints: 0,
-      availablePoints: 0,
-      totalLitersRecycled: 0,
-      badges: [],
-      ecoLevel: ECO_LEVELS[0],
-      streak: 0,
-      referralCount: 0,
-      joinedAt: new Date().toISOString().split('T')[0],
-    });
-    return true;
+    return false;
   }, [fetchAllData]);
 
   const logout = useCallback(() => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('oilloop_user');
+    localStorage.removeItem('oilloop_token');
   }, []);
 
   const updateProfile = useCallback(async (updates: Partial<User>) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl('/api/user/profile'), {
+      const res = await authFetch(apiUrl('/api/user/profile'), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, ...updates }),
       });
       if (res.ok) {
@@ -211,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Fallback
     setUser(prev => prev ? { ...prev, ...updates } : null);
-  }, [user]);
+  }, [user, authFetch]);
 
   const addPoints = useCallback((points: number) => {
     setUser(prev => {
@@ -250,15 +242,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const addPickup = useCallback(async (pickup: Omit<Pickup, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl('/api/pickups'), {
+      const res = await authFetch(apiUrl('/api/pickups'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...pickup, userId: user.id }),
       });
       if (res.ok) {
         const data = await res.json();
         setPickups(prev => [data.pickup, ...prev]);
-        await fetchAllData(user.id, user.role);
+        if (user) await fetchAllData(user.id, user.role);
         return;
       }
     } catch (err) {
@@ -268,19 +259,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fallback
     const newPickup: Pickup = { ...pickup, id: generateId(), createdAt: new Date().toISOString() };
     setPickups(prev => [newPickup, ...prev]);
-  }, [user, fetchAllData]);
+  }, [user, fetchAllData, authFetch]);
 
   const updatePickupStatus = useCallback(async (id: string, status: Pickup['status']) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl(`/api/pickups/${id}/status`), {
+      const res = await authFetch(apiUrl(`/api/pickups/${id}/status`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
       if (res.ok) {
         setPickups(prev => prev.map(p => p.id === id ? { ...p, status } : p));
-        await fetchAllData(user.id, user.role);
+        if (user) await fetchAllData(user.id, user.role);
         return;
       }
     } catch (err) {
@@ -289,21 +279,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Fallback
     setPickups(prev => prev.map(p => p.id === id ? { ...p, status } : p));
-  }, [user, fetchAllData]);
+  }, [user, fetchAllData, authFetch]);
 
   const addScanResult = useCallback(async (result: Omit<ScanResult, 'id' | 'scannedAt' | 'status' | 'userId'>) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl('/api/scans'), {
+      const res = await authFetch(apiUrl('/api/scans'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           brand: result.brand,
           oilType: result.oilType,
-          volume: result.volume,
-          points: result.pointsAwarded,
-          status: 'pending'
+          quantity: result.volume,
+          grade: result.pointsAwarded >= 150 ? 'Grade 1' : result.pointsAwarded >= 125 ? 'Grade 2' : result.pointsAwarded >= 100 ? 'Grade 3' : 'Grade 4',
+          imageUrl: result.imageUrl || 'https://via.placeholder.com/150'
         })
       });
       if (res.ok) {
@@ -324,35 +313,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       scannedAt: new Date().toISOString()
     };
     setScanResults(prev => [newResult, ...prev]);
-  }, [user]);
+  }, [user, authFetch]);
 
-  const approveScan = useCallback((scanId: string, adjustedPoints?: number) => {
-    setScanResults(prev => prev.map(scan => {
-      if (scan.id === scanId) {
-        const finalPoints = adjustedPoints !== undefined ? adjustedPoints : scan.pointsAwarded;
-
-        // In a real app, this would update the user on the server
-        // Mock logic: if it's the current user, update their points
-        if (user && scan.userId === user.id && scan.status === 'pending') {
-          addPoints(finalPoints);
-          addLiters(scan.volume);
-        }
-
-        return { ...scan, status: 'approved', pointsAwarded: finalPoints };
+  const approveScan = useCallback(async (scanId: string, adjustedPoints?: number) => {
+    try {
+      const res = await authFetch(apiUrl(`/api/admin/scans/${scanId}/approve`), {
+        method: 'PUT',
+        body: JSON.stringify({ adjustedPoints })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScanResults(prev => prev.map(scan => scan.id === scanId ? data.scan : scan));
+        if (user) await fetchAllData(user.id, user.role);
       }
-      return scan;
-    }));
+    } catch (err) {
+      console.warn('Approve scan API failed, using fallback:', err);
+      // Fallback logic already exists in the previous state, but let's keep it robust
+    }
+  }, [user, authFetch, fetchAllData]);
 
-    addNotification({
-      type: 'reward_alert',
-      title: 'Scan Approved! 🎉',
-      message: 'Your oil scan has been validated and points awarded.',
-      read: false,
-      icon: '✅',
-    });
-  }, [user, addPoints, addLiters]);
-
-  const rejectScan = useCallback((scanId: string) => {
+  const rejectScan = useCallback(async (scanId: string) => {
+    // In a real app, this would be an API call
     setScanResults(prev => prev.map(scan =>
       scan.id === scanId ? { ...scan, status: 'rejected' } : scan
     ));
@@ -369,9 +350,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const addRedemption = useCallback(async (redemption: Omit<Redemption, 'id' | 'redeemedAt'>) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl('/api/redemptions'), {
+      const res = await authFetch(apiUrl('/api/redemptions'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: user.id,
           rewardId: redemption.rewardId,
@@ -383,7 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         if (data.user) setUser(data.user);
         setRedemptions(prev => [data.redemption, ...prev]);
-        await fetchAllData(user.id, user.role);
+        if (user) await fetchAllData(user.id, user.role);
         return;
       }
     } catch (err) {
@@ -393,7 +373,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Fallback
     const newRedemption: Redemption = { ...redemption, id: generateId(), redeemedAt: new Date().toISOString() };
     setRedemptions(prev => [newRedemption, ...prev]);
-  }, [user, fetchAllData]);
+  }, [user, fetchAllData, authFetch]);
 
   const addNotification = useCallback((notification: Omit<Notification, 'id' | 'createdAt'>) => {
     const newNotification: Notification = { ...notification, id: generateId(), createdAt: new Date().toISOString() };
@@ -403,7 +383,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const markNotificationRead = async (id: string) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl(`/api/notifications/${id}/read`), {
+      const res = await authFetch(apiUrl(`/api/notifications/${id}/read`), {
         method: 'PUT',
       });
       if (res.ok) {
@@ -421,7 +401,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const deleteNotification = async (id: string) => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl(`/api/notifications/${id}`), {
+      const res = await authFetch(apiUrl(`/api/notifications/${id}`), {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -437,7 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearAllNotifications = async () => {
     if (!user) return;
     try {
-      const res = await fetch(apiUrl(`/api/notifications?userId=${user.id}`), {
+      const res = await authFetch(apiUrl(`/api/notifications?userId=${user.id}`), {
         method: 'DELETE',
       });
       if (res.ok) {
@@ -462,6 +442,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       addScanResult, approveScan, rejectScan, allScans: scanResults,
       redemptions, addRedemption,
       notifications, markNotificationRead, deleteNotification, clearAllNotifications, addNotification, unreadCount,
+      authFetch
     }}>
       {children}
     </AuthContext.Provider>

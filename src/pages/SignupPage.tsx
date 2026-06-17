@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [confirm, setConfirm] = useState('');
   const [avatar, setAvatar] = useState('🌿');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [agreed, setAgreed] = useState(false);
   const navigate = useNavigate();
   const { signup, updateProfile } = useAuth();
@@ -27,11 +28,18 @@ export default function SignupPage() {
   };
 
   const handleSubmit = async () => {
+    setError('');
     setLoading(true);
-    const ok = await signup(name, email, phone, password);
-    if (ok) {
-      updateProfile({ avatar });
-      navigate('/dashboard');
+    try {
+      const ok = await signup(name, email, phone, password);
+      if (ok) {
+        updateProfile({ avatar });
+        navigate('/dashboard');
+      } else {
+        setError('Signup failed. Email or phone might already be registered.');
+      }
+    } catch (err) {
+      setError('Something went wrong. Please check your connection.');
     }
     setLoading(false);
   };
@@ -100,9 +108,11 @@ export default function SignupPage() {
                 <p className="text-xs mt-1" style={{ color: '#ef4444' }}>Passwords don't match</p>
               )}
             </div>
-            <label className="flex items-start gap-3 cursor-pointer mt-4">
+            <label
+              className="flex items-start gap-3 cursor-pointer mt-4"
+              onClick={() => setAgreed(!agreed)}
+            >
               <div
-                onClick={() => setAgreed(!agreed)}
                 className="w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all"
                 style={{
                   borderColor: agreed ? 'var(--brand-primary)' : 'var(--border-color)',
@@ -150,6 +160,13 @@ export default function SignupPage() {
         <div className="flex-1" />
 
         {/* Next / Submit */}
+        {error && (
+          <div className="mb-4 p-3 rounded-xl text-sm text-center font-medium animate-shake"
+            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            {error}
+          </div>
+        )}
+
         <button
           onClick={step === 3 ? handleSubmit : () => setStep(step + 1)}
           disabled={!canNext() || loading}
