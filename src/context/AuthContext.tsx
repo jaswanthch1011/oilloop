@@ -151,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return true;
       }
+      console.warn('Login API returned non-OK status, falling back to mock login');
     } catch (err) {
       console.warn('Login API failed, falling back to mock login:', err);
     }
@@ -186,6 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return true;
       }
+      console.warn('Signup API returned non-OK status, falling back to mock signup');
     } catch (err) {
       console.warn('Signup API failed, falling back to mock signup:', err);
     }

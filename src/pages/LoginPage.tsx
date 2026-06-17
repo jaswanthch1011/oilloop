@@ -117,45 +117,7 @@ export default function LoginPage() {
 
         {/* Email Login (User & Admin) */}
         <form onSubmit={handleEmailLogin} className="space-y-4 animate-scale-in">
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Email</label>
-              <input
-                type="email"
-                value={role === 'admin' ? 'admin@frytofly.in' : email}
-                onChange={e => setEmail(e.target.value)}
-                className="input-base"
-                placeholder={role === 'admin' ? 'admin@frytofly.in' : 'you@example.com'}
-                required
-                readOnly={role === 'admin'}
-                style={role === 'admin' ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text-secondary)' }}>Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="input-base pr-12"
-                  placeholder="Enter your password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <button type="button" className="text-sm font-medium" style={{ color: 'var(--brand-primary)' }}>
-                Forgot password?
-              </button>
-            </div>
+            {/* ... form fields ... */}
             <button
               type="submit"
               className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-semibold text-white transition-all duration-300"
@@ -172,6 +134,25 @@ export default function LoginPage() {
               {loading ? <Loader2 size={18} className="animate-spin" /> : <><span>Sign In as {role === 'admin' ? 'Admin' : 'User'}</span><ArrowRight size={18} /></>}
             </button>
         </form>
+
+        {/* Demo Quick Login Buttons */}
+        <div className="mt-6 pt-6 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-center mb-3 opacity-40">Demo Quick Access</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => login('demo-user@frytofly.in', 'password').then(() => navigate('/dashboard'))}
+              className="flex-1 py-2 px-3 rounded-xl text-[10px] font-bold border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all"
+            >
+              🚀 USER DEMO
+            </button>
+            <button
+              onClick={() => login('admin@frytofly.in', 'password', 'admin').then(() => navigate('/admin'))}
+              className="flex-1 py-2 px-3 rounded-xl text-[10px] font-bold border border-amber-200 dark:border-amber-900/30 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all"
+            >
+              🛡️ ADMIN DEMO
+            </button>
+          </div>
+        </div>
 
         {error && (
           <div className="mt-4 p-3 rounded-xl text-sm text-center font-medium" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Zap } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 const slides = [
   {
@@ -36,6 +37,7 @@ const slides = [
 export default function OnboardingPage() {
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const next = () => {
     if (current < slides.length - 1) setCurrent(current + 1);
@@ -43,6 +45,11 @@ export default function OnboardingPage() {
   };
 
   const skip = () => navigate('/login');
+
+  const quickStart = async () => {
+    await login('demo-user@frytofly.in', 'password');
+    navigate('/dashboard');
+  };
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
@@ -68,9 +75,15 @@ export default function OnboardingPage() {
         ))}
       </div>
 
-      {/* Skip button */}
-      <div className="relative z-10 flex justify-end p-4">
-        <button onClick={skip} className="btn-ghost text-sm">Skip</button>
+      {/* Top Header */}
+      <div className="relative z-10 flex justify-between items-center p-4">
+        <button
+          onClick={quickStart}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-bold uppercase tracking-wider"
+        >
+          <Zap size={12} fill="currentColor" /> Quick Start
+        </button>
+        <button onClick={skip} className="btn-ghost text-sm opacity-60">Skip</button>
       </div>
 
       {/* Content */}
@@ -131,11 +144,17 @@ export default function OnboardingPage() {
         {/* CTA */}
         <button
           onClick={next}
-          className="btn-primary w-full flex items-center justify-center gap-2 text-base"
+          className="btn-primary w-full flex items-center justify-center gap-2 text-base shadow-glow-green"
         >
           {current === slides.length - 1 ? 'Get Started' : 'Next'}
           <ChevronRight size={18} />
         </button>
+
+        {current === slides.length - 1 && (
+           <p className="text-[10px] text-center mt-4 opacity-40 uppercase font-black tracking-widest">
+             Tap to Sign In or Sign Up
+           </p>
+        )}
       </div>
     </div>
   );
