@@ -52,7 +52,7 @@ const DEFAULT_USER: User = {
   badges: mockBadges.filter(b => !b.locked),
   referralCode: 'OILLOOP-ECO42',
   referralCount: 3,
-  joinedAt: '2025-01-15',
+  joinedAt: '2025-02-15',
   streak: 12,
 };
 

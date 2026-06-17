@@ -13,12 +13,12 @@ export const mockLocations: Location[] = [
     distance: '1.2 km',
     image: '',
     availableSlots: [
-      { id: 's1', date: '2025-02-15', time: '09:00 AM', available: true },
-      { id: 's2', date: '2025-02-15', time: '11:00 AM', available: true },
-      { id: 's3', date: '2025-02-15', time: '02:00 PM', available: false },
-      { id: 's4', date: '2025-02-16', time: '09:00 AM', available: true },
-      { id: 's5', date: '2025-02-16', time: '11:00 AM', available: true },
-      { id: 's6', date: '2025-02-17', time: '10:00 AM', available: true },
+      { id: 's1', date: '2025-03-15', time: '09:00 AM', available: true },
+      { id: 's2', date: '2025-03-15', time: '11:00 AM', available: true },
+      { id: 's3', date: '2025-03-15', time: '02:00 PM', available: false },
+      { id: 's4', date: '2025-03-16', time: '09:00 AM', available: true },
+      { id: 's5', date: '2025-03-16', time: '11:00 AM', available: true },
+      { id: 's6', date: '2025-03-17', time: '10:00 AM', available: true },
     ],
   },
   {
@@ -32,10 +32,10 @@ export const mockLocations: Location[] = [
     distance: '2.8 km',
     image: '',
     availableSlots: [
-      { id: 's7', date: '2025-02-15', time: '10:00 AM', available: true },
-      { id: 's8', date: '2025-02-15', time: '01:00 PM', available: true },
-      { id: 's9', date: '2025-02-16', time: '10:00 AM', available: true },
-      { id: 's10', date: '2025-02-17', time: '09:00 AM', available: true },
+      { id: 's7', date: '2025-03-15', time: '10:00 AM', available: true },
+      { id: 's8', date: '2025-03-15', time: '01:00 PM', available: true },
+      { id: 's9', date: '2025-03-16', time: '10:00 AM', available: true },
+      { id: 's10', date: '2025-03-17', time: '09:00 AM', available: true },
     ],
   },
   {
@@ -49,10 +49,10 @@ export const mockLocations: Location[] = [
     distance: '3.5 km',
     image: '',
     availableSlots: [
-      { id: 's11', date: '2025-02-15', time: '08:00 AM', available: true },
-      { id: 's12', date: '2025-02-15', time: '12:00 PM', available: true },
-      { id: 's13', date: '2025-02-16', time: '03:00 PM', available: true },
-      { id: 's14', date: '2025-02-17', time: '11:00 AM', available: true },
+      { id: 's11', date: '2025-03-15', time: '08:00 AM', available: true },
+      { id: 's12', date: '2025-03-15', time: '12:00 PM', available: true },
+      { id: 's13', date: '2025-03-16', time: '03:00 PM', available: true },
+      { id: 's14', date: '2025-03-17', time: '11:00 AM', available: true },
     ],
   },
   {
@@ -66,9 +66,9 @@ export const mockLocations: Location[] = [
     distance: '5.1 km',
     image: '',
     availableSlots: [
-      { id: 's15', date: '2025-02-15', time: '09:00 AM', available: true },
-      { id: 's16', date: '2025-02-16', time: '02:00 PM', available: true },
-      { id: 's17', date: '2025-02-17', time: '10:00 AM', available: true },
+      { id: 's15', date: '2025-03-15', time: '09:00 AM', available: true },
+      { id: 's16', date: '2025-03-16', time: '02:00 PM', available: true },
+      { id: 's17', date: '2025-03-17', time: '10:00 AM', available: true },
     ],
   },
   {
@@ -82,9 +82,9 @@ export const mockLocations: Location[] = [
     distance: '4.3 km',
     image: '',
     availableSlots: [
-      { id: 's18', date: '2025-02-15', time: '10:00 AM', available: true },
-      { id: 's19', date: '2025-02-16', time: '11:00 AM', available: true },
-      { id: 's20', date: '2025-02-17', time: '09:00 AM', available: true },
+      { id: 's18', date: '2025-03-15', time: '10:00 AM', available: true },
+      { id: 's19', date: '2025-03-16', time: '11:00 AM', available: true },
+      { id: 's20', date: '2025-03-17', time: '09:00 AM', available: true },
     ],
   },
 ];
@@ -105,9 +105,9 @@ export const mockRewards: Reward[] = [
 ];
 
 export const mockBadges: Badge[] = [
-  { id: 'b1', name: 'First Drop', description: 'Complete your first oil scan', icon: '💧', locked: false, unlockedAt: '2025-01-15', requirement: 'Scan 1 oil packet' },
-  { id: 'b2', name: 'Weekly Warrior', description: 'Maintain a 7-day recycling streak', icon: '⚔️', locked: false, unlockedAt: '2025-01-22', requirement: '7-day streak' },
-  { id: 'b3', name: 'Liter Legend', description: 'Recycle 10 liters of cooking oil', icon: '🏆', locked: false, unlockedAt: '2025-02-01', requirement: '10L recycled' },
+  { id: 'b1', name: 'First Drop', description: 'Complete your first oil scan', icon: '💧', locked: false, unlockedAt: '2025-02-15', requirement: 'Scan 1 oil packet' },
+  { id: 'b2', name: 'Weekly Warrior', description: 'Maintain a 7-day recycling streak', icon: '⚔️', locked: false, unlockedAt: '2025-02-22', requirement: '7-day streak' },
+  { id: 'b3', name: 'Liter Legend', description: 'Recycle 10 liters of cooking oil', icon: '🏆', locked: false, unlockedAt: '2025-03-01', requirement: '10L recycled' },
   { id: 'b4', name: 'Community Champion', description: 'Refer 5 friends to OilLoop', icon: '👑', locked: true, requirement: '5 referrals' },
   { id: 'b5', name: 'Century Club', description: 'Complete 100 oil scans', icon: '💯', locked: true, requirement: '100 scans' },
   { id: 'b6', name: 'Eco Ambassador', description: 'Share your impact on social media', icon: '🌟', locked: true, requirement: 'Share on social' },
@@ -116,11 +116,11 @@ export const mockBadges: Badge[] = [
 ];
 
 export const mockNotifications: Notification[] = [
-  { id: 'n1', type: 'badge_unlock', title: 'Badge Unlocked! 🏆', message: 'You earned the "Liter Legend" badge for recycling 10L of oil!', read: false, createdAt: '2025-02-08T10:30:00', icon: '🏆' },
-  { id: 'n2', type: 'pickup_reminder', title: 'Pickup Tomorrow', message: 'Your scheduled pickup at GreenDrop Hub is tomorrow at 09:00 AM.', read: false, createdAt: '2025-02-08T08:00:00', icon: '📅' },
-  { id: 'n3', type: 'reward_alert', title: 'New Reward Available!', message: 'Steel Water Bottle is now available for 300 points. Redeem before stock runs out!', read: true, createdAt: '2025-02-07T14:00:00', icon: '🎁' },
-  { id: 'n4', type: 'system', title: 'Welcome to Level 3! 🌳', message: "You've reached Tree level. Keep going to unlock Forest level at 2001 points!", read: true, createdAt: '2025-02-06T12:00:00', icon: '🌳' },
-  { id: 'n5', type: 'referral', title: 'Referral Bonus!', message: 'Your friend Priya joined OilLoop using your code. You earned 100 bonus points!', read: true, createdAt: '2025-02-05T09:30:00', icon: '🎉' },
+  { id: 'n1', type: 'badge_unlock', title: 'Badge Unlocked! 🏆', message: 'You earned the "Liter Legend" badge for recycling 10L of oil!', read: false, createdAt: '2025-03-08T10:30:00', icon: '🏆' },
+  { id: 'n2', type: 'pickup_reminder', title: 'Pickup Tomorrow', message: 'Your scheduled pickup at GreenDrop Hub is tomorrow at 09:00 AM.', read: false, createdAt: '2025-03-08T08:00:00', icon: '📅' },
+  { id: 'n3', type: 'reward_alert', title: 'New Reward Available!', message: 'Steel Water Bottle is now available for 300 points. Redeem before stock runs out!', read: true, createdAt: '2025-03-07T14:00:00', icon: '🎁' },
+  { id: 'n4', type: 'system', title: 'Welcome to Level 3! 🌳', message: "You've reached Tree level. Keep going to unlock Forest level at 2001 points!", read: true, createdAt: '2025-03-06T12:00:00', icon: '🌳' },
+  { id: 'n5', type: 'referral', title: 'Referral Bonus!', message: 'Your friend Priya joined OilLoop using your code. You earned 100 bonus points!', read: true, createdAt: '2025-03-05T09:30:00', icon: '🎉' },
 ];
 
 export const mockLeaderboard: LeaderboardEntry[] = [
