@@ -140,12 +140,30 @@ app.post('/api/auth/login', async (req, res) => {
       user = await User.findOne({ email: 'admin@frytofly.in', role: 'admin' });
     } else {
       user = await User.findOne({ email, role: 'user' });
+
+      // If user doesn't exist, create a guest user automatically (Removing Authentication)
+      if (!user) {
+        const name = email ? email.split('@')[0] : 'user';
+        const id = generateId();
+        const referralCode = `GUEST-${name.toUpperCase()}${Math.floor(100 + Math.random() * 900)}`;
+
+        user = await User.create({
+          id,
+          name: name.charAt(0).toUpperCase() + name.slice(1),
+          email: email || `${id}@guest.in`,
+          phone: '99999' + Math.floor(10000 + Math.random() * 90000),
+          password: password || 'nopassword',
+          avatar: '🌿',
+          role: 'user',
+          ecoLevel: ECO_LEVELS[0],
+          badges: [],
+          referralCode,
+          joinedAt: new Date()
+        });
+      }
     }
 
-    if (!user || user.password !== password) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
+    // Bypass password check for demo/open access
     res.json({
       user: mapUserResponse(user),
       token: 'mock-jwt-token-' + user.id
