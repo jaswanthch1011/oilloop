@@ -141,8 +141,8 @@ export default function AdminDashboardPage() {
       operatingHours: newLocHours,
       distance: newLocDistance,
       availableSlots: [
-        { id: `s_new_1`, date: '2026-06-12', time: '10:00 AM', available: true },
-        { id: `s_new_2`, date: '2026-06-12', time: '02:00 PM', available: true },
+        { id: `s_new_1`, date: '2025-02-15', time: '10:00 AM', available: true },
+        { id: `s_new_2`, date: '2025-02-15', time: '02:00 PM', available: true },
       ],
       image: '',
     };

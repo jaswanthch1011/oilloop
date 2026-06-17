@@ -95,16 +95,16 @@ export default function NotificationsPage() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 relative z-20">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     deleteNotification(n.id);
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-red-400 hover:text-red-500 transition-opacity"
+                  className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-all"
                   title="Delete"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </button>
 
                 {!n.read && (
@@ -113,10 +113,10 @@ export default function NotificationsPage() {
                       e.stopPropagation();
                       markNotificationRead(n.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-blue-400 hover:text-blue-500 transition-opacity"
+                    className="p-2 text-blue-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/20 rounded-lg transition-all"
                     title="Mark as read"
                   >
-                    <CheckCheck size={14} />
+                    <CheckCheck size={16} />
                   </button>
                 )}
               </div>

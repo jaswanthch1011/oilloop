@@ -570,6 +570,9 @@ app.put('/api/notifications/:id/read', async (req, res) => {
 
   try {
     const notification = await Notification.findOneAndUpdate({ id }, { read: true }, { new: true });
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
     res.json({ notification });
   } catch (err) {
     console.error('Read notification error:', err);
@@ -581,7 +584,10 @@ app.delete('/api/notifications/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
-    await Notification.deleteOne({ id });
+    const result = await Notification.deleteOne({ id });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('Delete notification error:', err);
