@@ -133,6 +133,7 @@ export interface MonthlyImpact {
 // ── Notifications ──
 export interface Notification {
   id: string;
+  userId?: string;
   type: 'pickup_reminder' | 'reward_alert' | 'badge_unlock' | 'system' | 'referral';
   title: string;
   message: string;
