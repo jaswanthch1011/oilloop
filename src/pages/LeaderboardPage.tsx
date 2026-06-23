@@ -17,18 +17,11 @@ export default function LeaderboardPage() {
   useEffect(() => {
     if (tab === 'leaderboard') {
       setLoading(true);
-      fetch(apiUrl('/api/leaderboard'))
-        .then(res => res.json())
-        .then(data => {
-          setLeaderboard(data.leaderboard);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Failed to fetch leaderboard:', err);
-          setLoading(false);
-          // Fallback to mock
-          setLeaderboard(mockLeaderboard);
-        });
+      const timer = setTimeout(() => {
+        setLeaderboard(mockLeaderboard);
+        setLoading(false);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [tab]);
 

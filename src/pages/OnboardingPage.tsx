@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Zap } from 'lucide-react';
+import { ChevronRight, Zap, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const slides = [
@@ -37,7 +37,7 @@ const slides = [
 export default function OnboardingPage() {
   const [current, setCurrent] = useState(0);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { guestLogin } = useAuth();
 
   const next = () => {
     if (current < slides.length - 1) setCurrent(current + 1);
@@ -46,8 +46,8 @@ export default function OnboardingPage() {
 
   const skip = () => navigate('/login');
 
-  const quickStart = async () => {
-    await login('demo-user@frytofly.in', 'password');
+  const quickStart = () => {
+    guestLogin();
     navigate('/dashboard');
   };
 
@@ -151,9 +151,23 @@ export default function OnboardingPage() {
         </button>
 
         {current === slides.length - 1 && (
-           <p className="text-[10px] text-center mt-4 opacity-40 uppercase font-black tracking-widest">
-             Tap to Sign In or Sign Up
-           </p>
+          <>
+            <button
+              onClick={quickStart}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl text-sm font-bold mt-3 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #8b5cf6, #6366f1, #3b82f6)',
+                color: '#fff',
+                boxShadow: '0 4px 20px rgba(99, 102, 241, 0.35)',
+              }}
+            >
+              <Sparkles size={16} />
+              Continue as Guest
+            </button>
+            <p className="text-[10px] text-center mt-3 opacity-40 uppercase font-black tracking-widest">
+              No account needed to explore
+            </p>
+          </>
         )}
       </div>
     </div>

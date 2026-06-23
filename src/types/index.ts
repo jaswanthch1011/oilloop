@@ -163,3 +163,26 @@ export interface LeaderboardEntry {
   level: EcoLevel;
   isCurrentUser?: boolean;
 }
+
+// ── Support Tickets ──
+export interface TicketMessage {
+  id: string;
+  sender: 'user' | 'admin';
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  subject: string;
+  category: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'resolved';
+  createdAt: string;
+  messages: TicketMessage[];
+}
+

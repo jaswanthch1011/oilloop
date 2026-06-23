@@ -9,9 +9,10 @@ interface TopBarProps {
   showBack?: boolean;
   showNotifications?: boolean;
   transparent?: boolean;
+  onBackOverride?: () => void;
 }
 
-export default function TopBar({ title, showBack = false, showNotifications = true, transparent = false }: TopBarProps) {
+export default function TopBar({ title, showBack = false, showNotifications = true, transparent = false, onBackOverride }: TopBarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { unreadCount, isAdmin } = useAuth();
@@ -30,7 +31,7 @@ export default function TopBar({ title, showBack = false, showNotifications = tr
       <div className="flex items-center gap-3">
         {showBack && (
           <button
-            onClick={() => navigate(-1)}
+            onClick={onBackOverride || (() => navigate(-1))}
             className="p-2 rounded-xl transition-all active:scale-95"
             style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}
           >

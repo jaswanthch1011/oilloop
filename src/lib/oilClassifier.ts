@@ -85,6 +85,20 @@ export const OIL_SIGNATURES: OilSignature[] = [
   // ── Figaro ──
   { brandName: 'Figaro', oilType: 'Canola Oil', volumes: [0.5, 1, 2], pointsMultiplier: 1.5,
     colorProfile: { hueMin: 55, hueMax: 95, satMin: 40, satMax: 85, lightMin: 30, lightMax: 60 }, weight: 10 },
+  // ── Ruchi Gold (Red/white packaging — Palmolein Oil) ──
+  { brandName: 'Ruchi Gold', oilType: 'Palmolein Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
+    colorProfile: { hueMin: 0, hueMax: 15, satMin: 50, satMax: 100, lightMin: 35, lightMax: 65 }, weight: 10 },
+  { brandName: 'Ruchi Gold', oilType: 'Palm Oil', volumes: [1, 2, 5], pointsMultiplier: 1.0,
+    colorProfile: { hueMin: 345, hueMax: 360, satMin: 50, satMax: 100, lightMin: 35, lightMax: 65 }, weight: 8 },
+  // ── Fortune Sun Lite (Yellow/golden packaging — Sunflower Oil) ──
+  { brandName: 'Fortune Sun Lite', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.2,
+    colorProfile: { hueMin: 35, hueMax: 55, satMin: 55, satMax: 100, lightMin: 50, lightMax: 80 }, weight: 11 },
+  // ── Sundrop SuperLite Advanced (Blue packaging — Sunflower Oil) ──
+  { brandName: 'Sundrop SuperLite', oilType: 'Sunflower Oil', volumes: [1, 2, 5], pointsMultiplier: 1.15,
+    colorProfile: { hueMin: 195, hueMax: 240, satMin: 50, satMax: 100, lightMin: 35, lightMax: 65 }, weight: 10 },
+  // ── Healthy Heart (Green/gold packaging — Refined Rice Bran Oil) ──
+  { brandName: 'Healthy Heart', oilType: 'Refined Rice Bran Oil', volumes: [1, 2, 5], pointsMultiplier: 1.1,
+    colorProfile: { hueMin: 80, hueMax: 150, satMin: 35, satMax: 90, lightMin: 40, lightMax: 70 }, weight: 10 },
 ];
 
 // ── STRICT: Only MobileNet classes that specifically indicate a CONTAINER ──

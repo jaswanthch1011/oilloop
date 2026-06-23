@@ -7,7 +7,7 @@ import BottomNav from './components/layout/BottomNav';
 // Pages
 import OnboardingPage from './pages/OnboardingPage';
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
+// SignupPage is now embedded in LoginPage
 import DashboardPage from './pages/DashboardPage';
 import SchedulePickupPage from './pages/SchedulePickupPage';
 import ScanPage from './pages/ScanPage';
@@ -19,6 +19,8 @@ import HistoryPage from './pages/HistoryPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import FAQPage from './pages/FAQPage';
 import ChatbotPage from './pages/ChatbotPage';
+import SupportTicketsPage from './pages/SupportTicketsPage';
+// ForgotPasswordPage is now embedded in LoginPage
 
 // Require Authentication Guard
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -57,7 +59,8 @@ function AppRoutes() {
 
       {/* Public Routes */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/signup" element={<Navigate to="/login" replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
 
       {/* Protected Routes Wrapper */}
       <Route
@@ -78,6 +81,7 @@ function AppRoutes() {
         <Route path="/admin" element={<AdminDashboardPage />} />
         <Route path="/faq" element={<FAQPage />} />
         <Route path="/chatbot" element={<ChatbotPage />} />
+        <Route path="/tickets" element={<SupportTicketsPage />} />
       </Route>
 
       {/* Fallback to root */}

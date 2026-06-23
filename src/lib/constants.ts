@@ -15,7 +15,7 @@ export const BASE_POINTS_PER_LITER = 50;
 export const OIL_GRADES = {
   GRADE_1: { points: 150, types: ['Canola Oil', 'Sunflower Oil', 'Canola-dominant vegetable oils'] },
   GRADE_2: { points: 125, types: ['Soybean Oil', 'Soy-dominant vegetable oils', 'Refined Rice Bran Oil'] },
-  GRADE_3: { points: 100, types: ['Palm Oil', 'Coconut Oil'] },
+  GRADE_3: { points: 100, types: ['Palm Oil', 'Palmolein Oil', 'Coconut Oil'] },
   GRADE_4: { points: 75, types: ['Crude Rice Bran Oil', 'Animal Fats (Tallow, Lard)', 'Heavily degraded restaurant grease'] },
 } as const;
 
@@ -28,9 +28,13 @@ export const OIL_TYPES = [
 
 export const OIL_BRANDS = [
   { name: 'Fortune', types: ['Sunflower Oil', 'Soybean Oil', 'Refined Rice Bran Oil', 'Canola-dominant vegetable oils'], volumes: [1, 2, 5], pointsMultiplier: 1.2 },
+  { name: 'Fortune Sun Lite', types: ['Sunflower Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.2 },
   { name: 'Saffola', types: ['Sunflower Oil', 'Refined Rice Bran Oil', 'Canola Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.3 },
   { name: 'Dhara', types: ['Soybean Oil', 'Sunflower Oil', 'Palm Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.1 },
   { name: 'Sundrop', types: ['Sunflower Oil', 'Refined Rice Bran Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.15 },
+  { name: 'Sundrop SuperLite', types: ['Sunflower Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.15 },
+  { name: 'Ruchi Gold', types: ['Palmolein Oil', 'Palm Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.0 },
+  { name: 'Healthy Heart', types: ['Refined Rice Bran Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.1 },
   { name: 'Nature Fresh', types: ['Soybean Oil', 'Sunflower Oil', 'Canola-dominant vegetable oils'], volumes: [1, 2, 5], pointsMultiplier: 1.0 },
   { name: 'Patanjali', types: ['Coconut Oil', 'Soybean Oil', 'Crude Rice Bran Oil'], volumes: [1, 2, 5], pointsMultiplier: 1.1 },
   { name: 'KS Oils', types: ['Soybean Oil', 'Sunflower Oil', 'Heavily degraded restaurant grease'], volumes: [1, 2, 5, 15], pointsMultiplier: 1.0 },

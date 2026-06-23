@@ -99,6 +99,7 @@ sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "platfor
 Write-Host "Building web assets and syncing with Capacitor..."
 Set-Location -Path $Workspace
 npm.cmd run build
+npx.cmd cap sync android
     # Also patch Capacitor module's build.gradle to use Java 17
     $CapacitorModuleGradle = "$Workspace\node_modules\@capacitor\android\capacitor\build.gradle"
     if (Test-Path $CapacitorModuleGradle) {
@@ -126,14 +127,17 @@ Set-Location -Path "$Workspace\android"
 # 8. Copy APK file to outputs
 $ApkSource = "$Workspace\android\app\build\outputs\apk\debug\app-debug.apk"
 $ApkDestWorkspace = "$Workspace\app-debug.apk"
-$ApkDestArtifacts = "C:\Users\Jaswanth Ch\.gemini\antigravity-ide\brain\3da9d512-5a9e-44ab-a837-8196da861f8a\app-debug.apk"
+$ApkDestFrytoFly = "$Workspace\FrytoFly.apk"
+$ApkDestArtifacts = "C:\Users\Jaswanth Ch\.gemini\antigravity-ide\brain\ac94c1e0-2d95-4eef-b05b-dd7f3c99b97e\FrytoFly.apk"
 
 if (Test-Path $ApkSource) {
     Copy-Item -Path $ApkSource -Destination $ApkDestWorkspace -Force
+    Copy-Item -Path $ApkSource -Destination $ApkDestFrytoFly -Force
     Copy-Item -Path $ApkSource -Destination $ApkDestArtifacts -Force
     Write-Host "--------------------------------------------------------"
     Write-Host "SUCCESS: APK file built successfully!"
     Write-Host "Workspace APK: $ApkDestWorkspace"
+    Write-Host "Workspace FrytoFly APK: $ApkDestFrytoFly"
     Write-Host "Artifacts APK (downloadable): $ApkDestArtifacts"
     Write-Host "--------------------------------------------------------"
 } else {

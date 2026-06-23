@@ -13,12 +13,12 @@ export const mockLocations: Location[] = [
     distance: '1.2 km',
     image: '',
     availableSlots: [
-      { id: 's1', date: '2025-03-15', time: '09:00 AM', available: true },
-      { id: 's2', date: '2025-03-15', time: '11:00 AM', available: true },
-      { id: 's3', date: '2025-03-15', time: '02:00 PM', available: false },
-      { id: 's4', date: '2025-03-16', time: '09:00 AM', available: true },
-      { id: 's5', date: '2025-03-16', time: '11:00 AM', available: true },
-      { id: 's6', date: '2025-03-17', time: '10:00 AM', available: true },
+      { id: 's1', date: '2026-06-20', time: '09:00 AM', available: true },
+      { id: 's2', date: '2026-06-20', time: '11:00 AM', available: true },
+      { id: 's3', date: '2026-06-20', time: '02:00 PM', available: false },
+      { id: 's4', date: '2026-06-21', time: '09:00 AM', available: true },
+      { id: 's5', date: '2026-06-21', time: '11:00 AM', available: true },
+      { id: 's6', date: '2026-06-22', time: '10:00 AM', available: true },
     ],
   },
   {
@@ -32,10 +32,10 @@ export const mockLocations: Location[] = [
     distance: '2.8 km',
     image: '',
     availableSlots: [
-      { id: 's7', date: '2025-03-15', time: '10:00 AM', available: true },
-      { id: 's8', date: '2025-03-15', time: '01:00 PM', available: true },
-      { id: 's9', date: '2025-03-16', time: '10:00 AM', available: true },
-      { id: 's10', date: '2025-03-17', time: '09:00 AM', available: true },
+      { id: 's7', date: '2026-06-20', time: '10:00 AM', available: true },
+      { id: 's8', date: '2026-06-20', time: '01:00 PM', available: true },
+      { id: 's9', date: '2026-06-21', time: '10:00 AM', available: true },
+      { id: 's10', date: '2026-06-22', time: '09:00 AM', available: true },
     ],
   },
   {
@@ -49,10 +49,10 @@ export const mockLocations: Location[] = [
     distance: '3.5 km',
     image: '',
     availableSlots: [
-      { id: 's11', date: '2025-03-15', time: '08:00 AM', available: true },
-      { id: 's12', date: '2025-03-15', time: '12:00 PM', available: true },
-      { id: 's13', date: '2025-03-16', time: '03:00 PM', available: true },
-      { id: 's14', date: '2025-03-17', time: '11:00 AM', available: true },
+      { id: 's11', date: '2026-06-20', time: '08:00 AM', available: true },
+      { id: 's12', date: '2026-06-20', time: '12:00 PM', available: true },
+      { id: 's13', date: '2026-06-21', time: '03:00 PM', available: true },
+      { id: 's14', date: '2026-06-22', time: '11:00 AM', available: true },
     ],
   },
   {
@@ -66,9 +66,9 @@ export const mockLocations: Location[] = [
     distance: '5.1 km',
     image: '',
     availableSlots: [
-      { id: 's15', date: '2025-03-15', time: '09:00 AM', available: true },
-      { id: 's16', date: '2025-03-16', time: '02:00 PM', available: true },
-      { id: 's17', date: '2025-03-17', time: '10:00 AM', available: true },
+      { id: 's15', date: '2026-06-20', time: '09:00 AM', available: true },
+      { id: 's16', date: '2026-06-21', time: '02:00 PM', available: true },
+      { id: 's17', date: '2026-06-22', time: '10:00 AM', available: true },
     ],
   },
   {
@@ -82,9 +82,9 @@ export const mockLocations: Location[] = [
     distance: '4.3 km',
     image: '',
     availableSlots: [
-      { id: 's18', date: '2025-03-15', time: '10:00 AM', available: true },
-      { id: 's19', date: '2025-03-16', time: '11:00 AM', available: true },
-      { id: 's20', date: '2025-03-17', time: '09:00 AM', available: true },
+      { id: 's18', date: '2026-06-20', time: '10:00 AM', available: true },
+      { id: 's19', date: '2026-06-21', time: '11:00 AM', available: true },
+      { id: 's20', date: '2026-06-22', time: '09:00 AM', available: true },
     ],
   },
 ];

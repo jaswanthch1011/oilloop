@@ -163,27 +163,10 @@ export default function ChatbotPage() {
     setIsTyping(true);
 
     // Simulate thinking delay
-    const delay = 800 + Math.random() * 1200;
-    setTimeout(async () => {
-      let response = '';
-      try {
-        const res = await fetch(apiUrl('/api/chatbot'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          response = data.response;
-        }
-      } catch (err) {
-        console.warn('Chatbot API failed, using local fallback:', err);
-      }
-
-      if (!response) {
-        const category = classifyMessage(text);
-        response = getResponse(category);
-      }
+    const delay = 600 + Math.random() * 800;
+    setTimeout(() => {
+      const category = classifyMessage(text);
+      const response = getResponse(category);
 
       const botMsg: Message = {
         id: `msg-${Date.now()}-bot`,

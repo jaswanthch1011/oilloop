@@ -289,6 +289,17 @@ export default function ProfilePage() {
           <div className="h-px" style={{ background: 'var(--border-color)' }} />
           
           <button 
+            onClick={() => navigate('/tickets')}
+            className="w-full flex items-center justify-between text-left text-sm font-medium" 
+            style={{ color: 'var(--text-primary)' }}
+          >
+            <span>Help Desk / Support Tickets</span>
+            <span style={{ color: 'var(--text-muted)' }}>➔</span>
+          </button>
+
+          <div className="h-px" style={{ background: 'var(--border-color)' }} />
+          
+          <button 
             onClick={() => navigate('/chatbot')}
             className="w-full flex items-center justify-between text-left text-sm font-medium" 
             style={{ color: 'var(--text-primary)' }}

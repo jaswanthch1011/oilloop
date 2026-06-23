@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Users, Droplets, CalendarDays, Plus, Search, Check, AlertTriangle, ArrowLeft, Trash2, MapPin, Loader2 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { Shield, Users, Droplets, CalendarDays, Plus, Search, Check, AlertTriangle, ArrowLeft, Trash2, MapPin, Loader2, TrendingUp, Filter, Download, LayoutDashboard, Scan, Map as MapIcon, MessageCircle, Pencil } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Cell } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import TopBar from '../components/layout/TopBar';
 import { mockLocations } from '../data/mockData';
@@ -10,20 +10,33 @@ import { apiUrl } from '../lib/api';
 import { getOilGrade } from '../lib/calculations';
 
 export default function AdminDashboardPage() {
-  const { user, pickups, scanResults, updatePickupStatus, addNotification, approveScan, rejectScan, allScans, authFetch } = useAuth();
+  const { user, pickups, scanResults, updatePickupStatus, addNotification, approveScan, rejectScan, allScans, authFetch, tickets, updateTicketStatus, addTicketMessage, registeredUsers, updateUserPoints } = useAuth();
   const navigate = useNavigate();
 
   // Role Gate check
   const isAdmin = user?.role === 'admin';
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'pickups' | 'scans' | 'locations'>('pickups');
+  const [activeTab, setActiveTab] = useState<'pickups' | 'scans' | 'locations' | 'tickets' | 'users'>('pickups');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editTotalPoints, setEditTotalPoints] = useState<number>(0);
+  const [editAvailablePoints, setEditAvailablePoints] = useState<number>(0);
+  const [replyText, setReplyText] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (selectedTicketId) {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedTicketId, tickets]);
   const [locations, setLocations] = useState<Location[]>(mockLocations);
   const [stats, setStats] = useState<any>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [globalScans, setGlobalScans] = useState<any[]>([]);
   const [editingPoints, setEditingPoints] = useState<string | null>(null);
   const [newPoints, setNewPoints] = useState<number>(0);
+  const [adjustedPointsMap, setAdjustedPointsMap] = useState<Record<string, number>>({});
 
   // Form state to add new location
   const [showAddForm, setShowAddForm] = useState(false);
@@ -32,29 +45,38 @@ export default function AdminDashboardPage() {
   const [newLocHours, setNewLocHours] = useState('8:00 AM – 6:00 PM');
   const [newLocDistance, setNewLocDistance] = useState('1.0 km');
 
+  const calculateLocalStats = () => {
+    const totalLitersVal = pickups.reduce((acc, p) => (p.status === 'processed' || p.status === 'completed' || p.status === 'picked_up') ? acc + p.estimatedVolume : acc, 0);
+    const activeOrdersVal = pickups.filter(p => p.status === 'scheduled' || p.status === 'confirmed' || p.status === 'picked_up' || p.status === 'processed').length;
+    const completedOrdersVal = pickups.filter(p => p.status === 'completed').length;
+    const totalUsersVal = 12;
+
+    const dailyCollection = [
+      { date: '10 Jun', liters: totalLitersVal * 0.2 },
+      { date: '11 Jun', liters: totalLitersVal * 0.35 },
+      { date: '12 Jun', liters: totalLitersVal * 0.5 },
+      { date: '13 Jun', liters: totalLitersVal * 0.6 },
+      { date: '14 Jun', liters: totalLitersVal * 0.75 },
+      { date: '15 Jun', liters: totalLitersVal * 0.9 },
+      { date: '16 Jun', liters: totalLitersVal },
+    ];
+
+    return {
+      totalLiters: totalLitersVal,
+      activePickups: activeOrdersVal,
+      completedPickups: completedOrdersVal,
+      totalUsers: totalUsersVal,
+      dailyCollection
+    };
+  };
+
   useEffect(() => {
     if (isAdmin) {
-      // Fetch stats
-      authFetch(apiUrl('/api/admin/stats'))
-        .then(res => res.json())
-        .then(data => {
-          setStats(data);
-          setLoadingStats(false);
-        })
-        .catch(err => {
-          console.error('Failed to fetch admin stats:', err);
-          setLoadingStats(false);
-        });
-
-      // Fetch global scans for visibility
-      authFetch(apiUrl('/api/admin/scans'))
-        .then(res => res.json())
-        .then(data => {
-          if (data.scans) setGlobalScans(data.scans);
-        })
-        .catch(err => console.error('Failed to fetch global scans:', err));
+      setStats(calculateLocalStats());
+      setLoadingStats(false);
+      setGlobalScans(allScans);
     }
-  }, [isAdmin, authFetch]);
+  }, [isAdmin, pickups, allScans]);
 
   if (!isAdmin) {
     return (
@@ -74,56 +96,20 @@ export default function AdminDashboardPage() {
   }
 
   // Calculate metrics from live stats or local pickups as fallback
-  const totalLiters = stats?.totalLiters !== undefined
-    ? stats.totalLiters
-    : pickups.reduce((acc, p) => (p.status === 'processed' || p.status === 'completed') ? acc + p.estimatedVolume : acc, 0);
-
-  const activeOrders = stats?.activePickups !== undefined
-    ? stats.activePickups
-    : pickups.filter(p => p.status === 'scheduled' || p.status === 'confirmed' || p.status === 'picked_up').length;
-
-  const completedOrders = stats?.completedPickups !== undefined
-    ? stats.completedPickups
-    : pickups.filter(p => p.status === 'completed').length;
-
-  const totalUsers = stats?.totalUsers !== undefined ? stats.totalUsers : 0;
+  const totalLiters = stats?.totalLiters !== undefined ? stats.totalLiters : 0;
+  const activeOrders = stats?.activePickups !== undefined ? stats.activePickups : 0;
+  const completedOrders = stats?.completedPickups !== undefined ? stats.completedPickups : 0;
+  const totalUsers = registeredUsers.length;
 
   // Status transition handler
   const handleStatusChange = async (pickupId: string, currentStatus: Pickup['status']) => {
     let nextStatus: Pickup['status'] = 'scheduled';
-    let title = '';
-    let message = '';
-    let icon = '';
-
-    if (currentStatus === 'scheduled') {
-      nextStatus = 'confirmed';
-      title = 'Pickup Confirmed! 📅';
-      message = `Your pickup ${pickupId} has been confirmed. A collector will arrive at your slot.`;
-      icon = '📅';
-    } else if (currentStatus === 'confirmed') {
-      nextStatus = 'picked_up';
-      title = 'Oil Picked Up! 🚚';
-      message = `Your oil container for order ${pickupId} was picked up and is headed to the processing plant.`;
-      icon = '🚚';
-    } else if (currentStatus === 'picked_up') {
-      nextStatus = 'processed';
-      title = 'Oil Processed! ⛽';
-      message = `Success! Your recycled oil has been processed into high-quality biodiesel. Points and impact have been credited.`;
-      icon = '⚡';
-    } else if (currentStatus === 'processed') {
-      nextStatus = 'completed';
-      title = 'Order Completed! 🎉';
-      message = `Recycling order ${pickupId} is officially complete. Thank you for making a difference!`;
-      icon = '🎉';
-    }
+    if (currentStatus === 'scheduled') nextStatus = 'confirmed';
+    else if (currentStatus === 'confirmed') nextStatus = 'picked_up';
+    else if (currentStatus === 'picked_up') nextStatus = 'processed';
+    else if (currentStatus === 'processed') nextStatus = 'completed';
 
     await updatePickupStatus(pickupId, nextStatus);
-
-    // Refresh stats after status change
-    authFetch(apiUrl('/api/admin/stats'))
-      .then(res => res.json())
-      .then(data => setStats(data))
-      .catch(err => console.error('Failed to refresh stats:', err));
   };
 
   // Add location helper
@@ -153,18 +139,16 @@ export default function AdminDashboardPage() {
     setShowAddForm(false);
   };
 
-  // Delete location helper
   const handleDeleteLocation = (id: string) => {
     setLocations(locations.filter(loc => loc.id !== id));
   };
 
-  // Analytics chart data
   const adminMonthlyData = stats?.dailyCollection || [];
 
   const locationChartData = locations.map(loc => {
     const ordersCount = pickups.filter(p => p.locationId === loc.id).length;
     return {
-      name: loc.name.split('—')[1]?.trim() || loc.name.slice(0, 12),
+      name: loc.name.split('—')[1]?.trim() || loc.name.slice(0, 10),
       orders: ordersCount,
     };
   });
@@ -176,351 +160,671 @@ export default function AdminDashboardPage() {
   );
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-      <TopBar title="Admin Panel" showBack={false} />
+    <div className="min-h-screen pb-32" style={{ background: 'var(--bg-primary)' }}>
+      <TopBar title="Admin Command Center" showBack={false} />
       
-      {/* Back button to User Mode */}
-      <div className="bg-zinc-900 text-white px-4 py-2 flex justify-between items-center text-xs">
-        <span className="flex items-center gap-1"><Shield size={12} className="text-lime-400" /> Admin Mode Active</span>
-        <button onClick={() => navigate('/dashboard')} className="font-semibold text-lime-400 flex items-center gap-1">
-          <ArrowLeft size={12} /> Switch to User View
+      {/* Premium Back to User Toggle */}
+      <div className="mx-4 mt-2 mb-6">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="w-full py-2.5 rounded-2xl bg-zinc-900 text-white flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shadow-xl shadow-zinc-900/20 active:scale-95 transition-all"
+        >
+          <ArrowLeft size={14} className="text-emerald-400" />
+          Switch to User Experience
         </button>
       </div>
 
-      <div className="page-container pt-4">
+      <div className="page-container pt-0">
         
-        {/* Overview metrics */}
-        <div className="grid grid-cols-2 gap-3 mb-6 animate-slide-down">
-          <div className="card-base p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
-                <Droplets size={16} className="text-green-500" />
+        {/* Statistics Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-8 animate-slide-down">
+          {[
+            { label: 'Total Volume', value: `${totalLiters}L`, icon: Droplets, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+            { label: 'Live Orders', value: activeOrders, icon: CalendarDays, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+            { label: 'System Users', value: totalUsers, icon: Users, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+            { label: 'Goal Met', value: '88%', icon: TrendingUp, color: 'text-teal-500', bg: 'bg-teal-500/10' },
+          ].map((item, idx) => (
+            <div key={idx} className="card-base p-5 group hover:border-emerald-500/50">
+              <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center mb-4 transition-transform group-hover:scale-110`}>
+                <item.icon size={20} className={item.color} />
               </div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Liters Recycled</span>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">{item.label}</p>
+              <p className="text-2xl font-black font-display text-zinc-900 dark:text-white">{item.value}</p>
             </div>
-            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{totalLiters}L</p>
-          </div>
+          ))}
+        </div>
 
-          <div className="card-base p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <CalendarDays size={16} className="text-amber-500" />
-              </div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Active Pickups</span>
+        {/* Analytics Section */}
+        <div className="card-base p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="section-title">Collection Analytics</h3>
+            <div className="flex gap-2">
+               <button className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500"><Filter size={14}/></button>
+               <button className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-zinc-500"><Download size={14}/></button>
             </div>
-            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{activeOrders}</p>
           </div>
-
-          <div className="card-base p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                <Users size={16} className="text-purple-500" />
-              </div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Registered Users</span>
-            </div>
-            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{totalUsers}</p>
-          </div>
-
-          <div className="card-base p-4">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center">
-                <Check size={16} className="text-teal-500" />
-              </div>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Completed Orders</span>
-            </div>
-            <p className="text-2xl font-bold font-display" style={{ color: 'var(--text-primary)' }}>{completedOrders}</p>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={adminMonthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10, fontWeight: 'bold' }} axisLine={false} tickLine={false} />
+                <YAxis hide />
+                <Tooltip
+                   contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="liters"
+                  stroke="var(--brand-primary)"
+                  strokeWidth={4}
+                  dot={{ r: 5, fill: 'var(--brand-primary)', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 8 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Recharts Analytics */}
-        <div className="card-base p-4 mb-6">
-          <h3 className="section-title mb-4">Daily Collection Volume (Liters)</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={adminMonthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} width={25} />
-              <Tooltip />
-              <Line type="monotone" dataKey="liters" stroke="var(--brand-primary)" strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card-base p-4 mb-6">
-          <h3 className="section-title mb-4">Orders by Collection Point</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <BarChart data={locationChartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 10 }} />
-              <YAxis tick={{ fill: 'var(--text-muted)', fontSize: 10 }} width={25} />
-              <Tooltip />
-              <Bar dataKey="orders" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* View Tabs */}
-        <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-xl mb-6">
-          {(['pickups', 'scans', 'locations'] as const).map(tab => (
+        {/* Tab Selection */}
+        <div className="flex bg-zinc-200/50 dark:bg-zinc-800/50 p-1.5 rounded-[1.25rem] mb-8 shadow-inner">
+          {[
+            { id: 'pickups', label: 'Orders', icon: LayoutDashboard },
+            { id: 'scans', label: 'Approvals', icon: Scan },
+            { id: 'locations', label: 'Hubs', icon: MapIcon },
+            { id: 'users', label: 'Users', icon: Users },
+            { id: 'tickets', label: 'Tickets', icon: MessageCircle },
+          ].map(tab => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all capitalize ${
-                activeTab === tab ? 'bg-white dark:bg-zinc-700 shadow-sm' : 'text-zinc-500'
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                activeTab === tab.id
+                  ? 'bg-white dark:bg-zinc-700 shadow-md text-emerald-600 dark:text-emerald-400 scale-[1.02]'
+                  : 'text-zinc-500'
               }`}
             >
-              {tab}
+              <tab.icon size={14} /> {tab.label}
             </button>
           ))}
         </div>
 
-        {/* Active Pickups Panel */}
+        {/* Tab Content: Pickups */}
         {activeTab === 'pickups' && (
-          <div className="card-base p-5 mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="section-title">Manage Pickups</h3>
-              <span className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{filteredPickups.length} Orders</span>
+          <div className="animate-slide-up">
+            <div className="flex justify-between items-center mb-4 px-1">
+              <h3 className="section-title">Manage Logistics</h3>
+              <span className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg opacity-60">{filteredPickups.length} ACTIVE</span>
             </div>
 
-            {/* Search bar */}
-            <div className="relative mb-4">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }}>
-                <Search size={16} />
-              </span>
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
               <input
                 type="text"
-                placeholder="Search by ID or Location..."
+                placeholder="Search by ID, User, or Hub..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="input-base pl-10"
+                className="input-base pl-12 h-14 rounded-2xl"
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {filteredPickups.map(p => (
-                <div key={p.id} className="p-3.5 rounded-xl border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-secondary)' }}>
-                  <div className="flex justify-between items-start mb-2">
+                <div key={p.id} className="card-base p-5 border-l-4" style={{ borderLeftColor: p.status === 'completed' ? '#10b981' : p.status === 'scheduled' ? '#f59e0b' : '#3b82f6' }}>
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <span className="font-mono text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{p.id}</span>
-                      <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.locationName}</p>
+                      <span className="font-mono text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-md">{p.id}</span>
+                      <h4 className="text-sm font-bold mt-1 text-zinc-900 dark:text-white">{p.locationName}</h4>
                     </div>
-                    <span className={`badge uppercase text-[8px] font-extrabold ${
-                      p.status === 'scheduled' ? 'badge-warning' :
-                      p.status === 'confirmed' ? 'badge-info' : 'badge-success'
+                    <span className={`text-[8px] font-black px-2 py-1 rounded uppercase tracking-wider ${
+                      p.status === 'scheduled' ? 'bg-amber-100 text-amber-700' :
+                      p.status === 'confirmed' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
                     }`}>
-                      {p.status}
+                      {p.status.replace('_', ' ')}
                     </span>
                   </div>
 
-                  <div className="flex justify-between items-center text-xs mt-3 pt-2.5 border-t border-dashed" style={{ borderColor: 'var(--border-color)' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      {p.oilType} • {p.estimatedVolume}L
-                    </span>
+                  <div className="flex justify-between items-end mt-4 pt-4 border-t border-dashed border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-4">
+                       <div>
+                          <p className="text-[9px] font-black text-zinc-400 uppercase">OIL TYPE</p>
+                          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{p.oilType}</p>
+                       </div>
+                       <div>
+                          <p className="text-[9px] font-black text-zinc-400 uppercase">VOLUME</p>
+                          <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{p.estimatedVolume}L</p>
+                       </div>
+                    </div>
                     {p.status !== 'completed' && (
                       <button
                         onClick={() => handleStatusChange(p.id, p.status)}
-                        className="px-3 py-1 rounded bg-green-500 hover:bg-green-600 dark:bg-lime-500 dark:hover:bg-lime-600 text-[10px] font-bold text-white dark:text-zinc-950 transition-all flex items-center gap-1"
+                        className="h-10 px-4 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 active:scale-95"
                       >
-                        {p.status === 'scheduled' && 'Confirm Order'}
-                        {p.status === 'confirmed' && 'Mark Picked Up'}
-                        {p.status === 'picked_up' && 'Process Biodiesel'}
-                        {p.status === 'processed' && 'Complete Order'}
+                        Advance Status
                       </button>
                     )}
                   </div>
                 </div>
               ))}
-
-              {filteredPickups.length === 0 && (
-                <p className="text-xs text-center py-6" style={{ color: 'var(--text-muted)' }}>No pickups found matching your query</p>
-              )}
             </div>
           </div>
         )}
 
-        {/* Global Scans / Approval Panel */}
+        {/* Tab Content: Scans */}
         {activeTab === 'scans' && (
-          <div className="card-base p-5 mb-6">
-            <h3 className="section-title mb-4">Pending Scan Approvals</h3>
+          <div className="animate-slide-up">
+            <h3 className="section-title mb-6 px-1">Quality Verification</h3>
             <div className="space-y-4">
               {allScans.filter(s => s.status === 'pending').map((s: any) => (
-                <div key={s.id} className="p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={s.id} className="card-base p-6">
+                  <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h4 className="text-sm font-bold">{s.brand}</h4>
-                      <p className="text-[10px] opacity-60">{new Date(s.scannedAt).toLocaleString()}</p>
+                      <h4 className="text-base font-black text-zinc-900 dark:text-white">{s.brand}</h4>
+                      <p className="text-[10px] font-medium text-zinc-500">{new Date(s.scannedAt).toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                        {editingPoints === s.id ? (
-                         <div className="flex items-center gap-1">
+                         <div className="flex items-center gap-1.5 justify-end">
                            <input
                              type="number"
                              value={newPoints}
                              onChange={e => setNewPoints(Number(e.target.value))}
-                             className="w-16 px-2 py-1 text-xs border rounded bg-white dark:bg-zinc-800"
+                             className="w-20 h-8 text-center text-xs font-bold rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white"
+                             min="0"
                            />
-                           <button onClick={() => { approveScan(s.id, newPoints); setEditingPoints(null); }} className="p-1 text-green-500 bg-green-50 rounded">
-                             <Check size={14}/>
+                           <button
+                             onClick={() => {
+                               setAdjustedPointsMap(prev => ({ ...prev, [s.id]: newPoints }));
+                               setEditingPoints(null);
+                             }}
+                             className="p-1 rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors"
+                             title="Confirm points adjustment"
+                           >
+                             <Check size={12} />
                            </button>
                          </div>
                        ) : (
-                         <div className="flex flex-col items-end">
-                            <span className="text-sm font-black text-amber-600">~{s.pointsAwarded} pts</span>
-                            <button onClick={() => { setEditingPoints(s.id); setNewPoints(s.pointsAwarded); }} className="text-[9px] font-bold text-blue-500 hover:underline">EDIT POINTS</button>
+                         <div className="flex items-center gap-1.5 justify-end">
+                           <span className="text-lg font-black text-emerald-600">
+                             ~{adjustedPointsMap[s.id] !== undefined ? adjustedPointsMap[s.id] : s.pointsAwarded} XP
+                           </span>
+                           <button
+                             onClick={() => {
+                               setEditingPoints(s.id);
+                               setNewPoints(adjustedPointsMap[s.id] !== undefined ? adjustedPointsMap[s.id] : s.pointsAwarded);
+                             }}
+                             className="p-1 text-zinc-400 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-all"
+                             title="Edit reward points"
+                           >
+                             <Pencil size={12} />
+                           </button>
                          </div>
                        )}
+                       <p className="text-[10px] font-black text-emerald-500/60 uppercase tracking-widest">EST. REWARD</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+
+                  <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-800/50 mb-6">
                     <div>
-                      <p className="text-[10px] font-bold opacity-40 uppercase">Oil Type</p>
-                      <p className="text-xs font-semibold">{s.oilType}</p>
-                      <p className="text-[9px] font-bold text-green-600 dark:text-lime-400">{getOilGrade(s.oilType)}</p>
+                      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">GRADE ANALYSIS</p>
+                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">{getOilGrade(s.oilType)}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-bold opacity-40 uppercase">Volume</p>
-                      <p className="text-xs font-semibold">{s.volume}L</p>
+                      <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1">REPORTED VOLUME</p>
+                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-200">{s.volume} Liters</p>
                     </div>
-                    <div className="ml-auto flex gap-2">
-                      <button
-                        onClick={() => rejectScan(s.id)}
-                        className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-[10px] font-bold hover:bg-red-50"
-                      >
-                        REJECT
-                      </button>
-                      <button
-                        onClick={() => approveScan(s.id)}
-                        className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-[10px] font-bold hover:bg-green-600"
-                      >
-                        APPROVE
-                      </button>
-                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => rejectScan(s.id)}
+                      className="flex-1 h-12 rounded-xl border-2 border-red-100 text-red-500 text-xs font-black uppercase tracking-widest hover:bg-red-50 transition-colors"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      onClick={() => approveScan(s.id, adjustedPointsMap[s.id])}
+                      className="flex-[2] h-12 rounded-xl bg-emerald-500 text-white text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                    >
+                      Approve & Credit XP
+                    </button>
                   </div>
                 </div>
               ))}
               {allScans.filter(s => s.status === 'pending').length === 0 && (
-                <p className="text-sm text-center py-10 opacity-40">No pending scans for approval.</p>
-              )}
-
-              {/* Recent Activity */}
-              {allScans.some(s => s.status !== 'pending') && (
-                <div className="mt-8">
-                  <h4 className="text-[10px] font-bold uppercase tracking-widest mb-3 opacity-40">Processed Recently</h4>
-                  <div className="space-y-2">
-                    {allScans.filter(s => s.status !== 'pending').slice(0, 5).map((s: any) => (
-                      <div key={s.id} className="p-3 rounded-xl border border-zinc-50 dark:border-zinc-900 flex justify-between items-center opacity-70 bg-white/50 dark:bg-zinc-800/20">
-                        <div>
-                          <p className="text-xs font-bold">{s.brand} • {s.volume}L</p>
-                          <p className="text-[9px]">{new Date(s.scannedAt).toLocaleDateString()}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold">{s.pointsAwarded} pts</span>
-                          <span className={`text-[8px] font-black px-2 py-0.5 rounded ${s.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {s.status.toUpperCase()}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="py-20 text-center">
+                   <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Check className="text-emerald-500" size={32} />
+                   </div>
+                   <p className="text-sm font-bold text-zinc-500">All scans have been processed!</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Location Management */}
+        {/* Tab Content: Locations */}
         {activeTab === 'locations' && (
-          <div className="card-base p-5 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="section-title">Collection Locations</h3>
-            <button 
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center bg-green-500/10 text-green-500 dark:text-lime-400 hover:bg-green-500/20 transition-all"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+          <div className="animate-slide-up">
+            <div className="flex justify-between items-center mb-6 px-1">
+              <h3 className="section-title">Collection Network</h3>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="h-10 px-4 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+              >
+                <Plus size={14} /> Add Hub
+              </button>
+            </div>
 
-          {showAddForm && (
-            <form onSubmit={handleAddLocation} className="p-4 rounded-xl border mb-4 space-y-3 animate-scale-in" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-secondary)' }}>
-              <h4 className="text-xs font-bold">Add Collection Hub</h4>
-              <div>
-                <label className="block text-[10px] font-bold mb-1" style={{ color: 'var(--text-muted)' }}>Hub Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. BioDrop Station — Gachibowli" 
-                  value={newLocName}
-                  onChange={e => setNewLocName(e.target.value)}
-                  className="input-base py-2 text-xs"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold mb-1" style={{ color: 'var(--text-muted)' }}>Address</label>
-                <input 
-                  type="text" 
-                  placeholder="Street and landmark details" 
-                  value={newLocAddress}
-                  onChange={e => setNewLocAddress(e.target.value)}
-                  className="input-base py-2 text-xs"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold mb-1" style={{ color: 'var(--text-muted)' }}>Hours</label>
+            {showAddForm && (
+              <form onSubmit={handleAddLocation} className="card-base p-6 mb-8 space-y-4 animate-scale-in border-2 border-emerald-500/20 shadow-2xl">
+                <h4 className="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest">New Collection Point</h4>
+                <div className="space-y-4">
                   <input 
                     type="text" 
-                    value={newLocHours}
-                    onChange={e => setNewLocHours(e.target.value)}
-                    className="input-base py-2 text-xs"
+                    placeholder="Hub Name (e.g. BioDrop Station)"
+                    value={newLocName}
+                    onChange={e => setNewLocName(e.target.value)}
+                    className="input-base h-12"
+                    required
                   />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold mb-1" style={{ color: 'var(--text-muted)' }}>Distance</label>
-                  <input 
+                  <input
                     type="text" 
-                    value={newLocDistance}
-                    onChange={e => setNewLocDistance(e.target.value)}
-                    className="input-base py-2 text-xs"
+                    placeholder="Full Street Address"
+                    value={newLocAddress}
+                    onChange={e => setNewLocAddress(e.target.value)}
+                    className="input-base h-12"
+                    required
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      placeholder="Operating Hours"
+                      value={newLocHours}
+                      onChange={e => setNewLocHours(e.target.value)}
+                      className="input-base h-12"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Distance Display"
+                      value={newLocDistance}
+                      onChange={e => setNewLocDistance(e.target.value)}
+                      className="input-base h-12"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={() => setShowAddForm(false)} className="flex-1 h-12 rounded-xl text-xs font-bold text-zinc-500 hover:bg-zinc-50 transition-colors">Cancel</button>
+                  <button type="submit" className="flex-1 h-12 rounded-xl bg-emerald-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Create Hub</button>
+                </div>
+              </form>
+            )}
+
+            <div className="space-y-3">
+              {locations.map(loc => (
+                <div key={loc.id} className="flex justify-between items-center p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 hover:border-emerald-500/30 transition-all group">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-emerald-500 transition-colors">
+                      <MapPin size={22} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-zinc-900 dark:text-white">{loc.name}</h4>
+                      <p className="text-[10px] font-medium text-zinc-500">{loc.address}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-[9px] font-black uppercase tracking-tighter px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600">
+                          {loc.availableSlots.length} SLOTS
+                        </span>
+                        <span className="text-[9px] font-bold text-zinc-400">• {loc.operatingHours}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteLocation(loc.id)}
+                    className="w-10 h-10 rounded-xl hover:bg-red-50 text-red-300 hover:text-red-500 transition-all flex items-center justify-center"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Users */}
+        {activeTab === 'users' && (
+          <div className="animate-slide-up">
+            <div className="flex justify-between items-center mb-6 px-1">
+              <h3 className="section-title">Registered Users</h3>
+              <span className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg opacity-60">
+                {registeredUsers.length} TOTAL
+              </span>
+            </div>
+
+            <div className="relative mb-6">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search by Name, Email, or Phone..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="input-base pl-12 h-14 rounded-2xl"
+              />
+            </div>
+
+            <div className="space-y-4">
+              {registeredUsers
+                .filter(u => 
+                  u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (u.phone && u.phone.includes(searchQuery))
+                )
+                .map(u => (
+                  <div key={u.id} className="card-base p-6 hover:border-emerald-500/20 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-2xl">
+                          {u.avatar || '👤'}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-black text-zinc-900 dark:text-white leading-tight">{u.name}</h4>
+                            <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                              {u.role}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-medium text-zinc-400 mt-1">{u.email}</p>
+                          {u.phone && <p className="text-[10px] font-medium text-zinc-500">{u.phone}</p>}
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-xs font-bold text-zinc-400 block">Eco-Level</span>
+                        <div className="flex items-center gap-1 mt-1 justify-end">
+                          <span>{u.ecoLevel.icon}</span>
+                          <span className="text-xs font-black text-emerald-600 uppercase tracking-widest">{u.ecoLevel.name}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-850/30 border border-zinc-100 dark:border-zinc-800/20 mb-4">
+                      <div>
+                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">TOTAL POINTS (XP)</p>
+                        <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{u.totalPoints} XP</p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-zinc-400 uppercase tracking-widest mb-1">AVAILABLE POINTS</p>
+                        <p className="text-base font-black text-zinc-800 dark:text-zinc-200">{u.availablePoints} PTS</p>
+                      </div>
+                    </div>
+
+                    {editingUser === u.id ? (
+                      <div className="p-4 rounded-2xl border-2 border-emerald-500/20 bg-emerald-500/5 space-y-4 animate-scale-in">
+                        <h5 className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Adjust Points Balance</h5>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-bold text-zinc-400 block mb-1">TOTAL POINTS</label>
+                            <input
+                              type="number"
+                              value={editTotalPoints}
+                              onChange={e => setEditTotalPoints(Number(e.target.value))}
+                              className="input-base h-10 text-xs px-3 font-bold"
+                              min="0"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold text-zinc-400 block mb-1">AVAILABLE POINTS</label>
+                            <input
+                              type="number"
+                              value={editAvailablePoints}
+                              onChange={e => setEditAvailablePoints(Number(e.target.value))}
+                              className="input-base h-10 text-xs px-3 font-bold"
+                              min="0"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 justify-end pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser(null)}
+                            className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateUserPoints(u.id, editTotalPoints, editAvailablePoints);
+                              setEditingUser(null);
+                            }}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-widest transition-colors shadow-lg shadow-emerald-500/20"
+                          >
+                            Save Balance
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingUser(u.id);
+                            setEditTotalPoints(u.totalPoints);
+                            setEditAvailablePoints(u.availablePoints);
+                          }}
+                          className="h-10 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:border-emerald-500/30 text-xs font-black uppercase tracking-widest flex items-center gap-1.5 transition-all"
+                        >
+                          <Pencil size={12} /> Adjust Balance
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {registeredUsers.filter(u => 
+                u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (u.phone && u.phone.includes(searchQuery))
+              ).length === 0 && (
+                <div className="py-20 text-center">
+                  <p className="text-sm font-bold text-zinc-500">No users found matching your search</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content: Tickets */}
+        {activeTab === 'tickets' && (
+          <div className="animate-slide-up">
+            <div className="flex justify-between items-center mb-6 px-1">
+              <h3 className="section-title">Support Tickets</h3>
+              <span className="text-[10px] font-black bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-lg opacity-60">
+                {tickets.filter(t => t.status !== 'resolved').length} OPEN
+              </span>
+            </div>
+
+            {selectedTicketId ? (
+              // Ticket details and chat view
+              (() => {
+                const ticket = tickets.find(t => t.id === selectedTicketId);
+                if (!ticket) return null;
+                return (
+                  <div className="card-base p-6 space-y-6 animate-scale-in">
+                    <div className="flex justify-between items-center pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                      <button 
+                        onClick={() => setSelectedTicketId(null)} 
+                        className="text-xs font-bold text-zinc-500 hover:text-emerald-500 transition-colors flex items-center gap-1"
+                      >
+                        <ArrowLeft size={14} /> Back to Tickets List
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-zinc-400 mr-2">Status:</span>
+                        <select
+                          value={ticket.status}
+                          onChange={e => updateTicketStatus(ticket.id, e.target.value as any)}
+                          className="px-2 py-1 rounded-lg bg-zinc-50 dark:bg-zinc-800 text-xs font-bold border border-zinc-200 dark:border-zinc-800"
+                        >
+                          <option value="open">Open</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-zinc-400">
+                          {ticket.category}
+                        </span>
+                        <span className="text-xs text-zinc-400">Raised by {ticket.userName} ({ticket.userEmail})</span>
+                      </div>
+                      <h4 className="text-lg font-black text-zinc-900 dark:text-white leading-tight">{ticket.subject}</h4>
+                      <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed bg-zinc-50/50 dark:bg-zinc-850/40 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        {ticket.description}
+                      </p>
+                    </div>
+
+                    {/* Chat history */}
+                    <div className="h-[250px] overflow-y-auto border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 space-y-4 flex flex-col bg-zinc-50/20 dark:bg-zinc-950/10">
+                      {ticket.messages.map(msg => {
+                        const isSenderAdmin = msg.sender === 'admin';
+                        return (
+                          <div 
+                            key={msg.id} 
+                            className={`flex flex-col max-w-[80%] ${isSenderAdmin ? 'self-end' : 'self-start'}`}
+                          >
+                            <span className="text-[9px] font-bold mb-1 ml-1 text-zinc-400">
+                              {isSenderAdmin ? '🛡️ Loop Support (You)' : `👤 ${msg.senderName}`}
+                            </span>
+                            <div 
+                              className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                                isSenderAdmin 
+                                  ? 'bg-emerald-500 text-white rounded-tr-sm shadow-md' 
+                                  : 'bg-zinc-100 dark:bg-zinc-850 rounded-tl-sm text-zinc-800 dark:text-zinc-200'
+                              }`}
+                            >
+                              {msg.message}
+                            </div>
+                            <span className="text-[8px] text-zinc-400 mt-0.5 self-end mr-1">
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    {/* Send reply */}
+                    <form 
+                      onSubmit={e => {
+                        e.preventDefault();
+                        if (!replyText.trim()) return;
+                        addTicketMessage(ticket.id, replyText.trim());
+                        setReplyText('');
+                      }} 
+                      className="flex gap-2"
+                    >
+                      <input
+                        type="text"
+                        placeholder="Type response to user..."
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        className="input-base flex-1 h-12"
+                      />
+                      <button 
+                        type="submit" 
+                        disabled={!replyText.trim()}
+                        className="px-6 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        Send
+                      </button>
+                    </form>
+                  </div>
+                );
+              })()
+            ) : (
+              // Tickets list view
+              <div className="space-y-4">
+                <div className="relative mb-6">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search by ID, User, or Subject..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="input-base h-12 pl-12"
                   />
                 </div>
-              </div>
-              <div className="flex gap-2 justify-end pt-1">
-                <button type="button" onClick={() => setShowAddForm(false)} className="px-3 py-1.5 text-[10px] font-semibold text-zinc-500">Cancel</button>
-                <button type="submit" className="px-4 py-1.5 text-[10px] font-bold btn-primary">Add Location</button>
-              </div>
-            </form>
-          )}
 
-          <div className="space-y-2.5">
-            {locations.map(loc => (
-              <div key={loc.id} className="flex justify-between items-start p-3 rounded-xl border" style={{ borderColor: 'var(--border-color)' }}>
-                <div className="flex gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <MapPin size={15} className="text-green-500 dark:text-lime-400" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{loc.name}</h4>
-                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{loc.address}</p>
-                    <span className="text-[9px] mt-1 inline-block px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                      Slots Available: {loc.availableSlots.length}
-                    </span>
-                  </div>
+                <div className="space-y-3">
+                  {tickets.filter(t => 
+                    t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    t.id.toLowerCase().includes(searchQuery.toLowerCase())
+                  ).length === 0 ? (
+                    <div className="card-base p-8 text-center text-zinc-400 text-sm">
+                      No support tickets found matching "{searchQuery}"
+                    </div>
+                  ) : (
+                    tickets.filter(t => 
+                      t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.id.toLowerCase().includes(searchQuery.toLowerCase())
+                    ).map(ticket => (
+                      <button
+                        key={ticket.id}
+                        onClick={() => {
+                          setSelectedTicketId(ticket.id);
+                          setReplyText('');
+                        }}
+                        className="w-full card-base p-4 text-left hover:scale-[1.01] transition-transform flex items-center justify-between group"
+                      >
+                        <div className="flex-1 pr-4">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-[10px] font-bold text-zinc-400">ID: {ticket.id}</span>
+                            <span className="text-[9px] text-zinc-400">
+                              {new Date(ticket.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <h4 className="font-black text-sm text-zinc-900 dark:text-white group-hover:text-emerald-500 transition-colors">
+                            {ticket.subject}
+                          </h4>
+                          <p className="text-[10px] text-zinc-500 mt-1">
+                            From: {ticket.userName} ({ticket.userEmail})
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="p-1 rounded bg-zinc-100 dark:bg-zinc-800 text-[8px] font-black uppercase tracking-wide text-zinc-400">
+                              {ticket.category}
+                            </span>
+                            <span className="text-[9px] text-zinc-400">
+                              {ticket.messages.length} msg{ticket.messages.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          {ticket.status === 'open' && (
+                            <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">Open</span>
+                          )}
+                          {ticket.status === 'in_progress' && (
+                            <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400">In Progress</span>
+                          )}
+                          {ticket.status === 'resolved' && (
+                            <span className="px-2 py-0.5 text-[8px] font-black uppercase rounded bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400">Resolved</span>
+                          )}
+                          <span className="text-zinc-300 group-hover:text-emerald-500 transition-colors">➔</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
-                <button 
-                  onClick={() => handleDeleteLocation(loc.id)}
-                  className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 flex-shrink-0"
-                >
-                  <Trash2 size={13} />
-                </button>
               </div>
-            ))}
+            )}
           </div>
-        </div>
         )}
 
       </div>
     </div>
   );
 }
+

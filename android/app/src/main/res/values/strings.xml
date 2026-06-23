@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">OilLoop</string>
-    <string name="title_activity_main">OilLoop</string>
+    <string name="app_name">FrytoFly</string>
+    <string name="title_activity_main">FrytoFly</string>
     <string name="package_name">in.oilloop.app</string>
     <string name="custom_url_scheme">in.oilloop.app</string>
 </resources>
